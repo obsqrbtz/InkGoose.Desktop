@@ -1,0 +1,70 @@
+.background-sync-status {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.sync-indicator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.sync-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sync-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sync-message {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.sync-counts {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.queue-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .background-sync-status {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

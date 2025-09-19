@@ -86,6 +86,7 @@ interface AppState {
   selectLocalVault: (vaultPath: string) => Promise<void>;
   syncAllVaults: () => Promise<void>;
   syncVault: () => Promise<void>;
+  getSyncQueueStatus: () => { pending: number; active: number };
   setOnlineStatus: (isOnline: boolean) => void;
   addCurrentFolderToAccount: (currentFolderPath: string, vaultName: string) => Promise<{ vault: CreateVaultResponse; path: string }>;
   openLocalVault: (vaultName: string) => Promise<string>;
@@ -773,27 +774,48 @@ export const useAppStore = create<AppState>((set) => ({
     }
 
     try {
-      set({ isSyncing: true, syncProgress: { message: 'Starting sync...', progress: 0 } });
+      set({ isSyncing: true, syncProgress: { message: 'Starting background sync...', progress: 0 } });
 
-      const conflicts = await SyncService.performFullSync(
+      await SyncService.performBackgroundSync(
         state.currentVaultId,
         state.vault,
         state.files,
-        (message, progress) => {
-          set({ syncProgress: { message, progress } });
+        (progress) => {
+          const percent = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
+          
+          const isComplete = progress.status === 'completed' || 
+                           (progress.completed + progress.failed >= progress.total && progress.inProgress === 0);
+          
+          if (isComplete) {
+            set({
+              isSyncing: false,
+              lastSyncTime: new Date(),
+              syncProgress: null,
+            });
+            
+            state.refreshFiles().then(() => {
+              const updatedState = useAppStore.getState();
+              state.rebuildTagsIndex(updatedState.files);
+              state.buildSearchIndex();
+            });
+          } else {
+            set({ 
+              syncProgress: { 
+                message: `${progress.status} (${progress.completed}/${progress.total})${progress.failed > 0 ? ` - ${progress.failed} failed` : ''}`, 
+                progress: percent 
+              } 
+            });
+          }
         }
       );
 
-      set({
-        isSyncing: false,
-        lastSyncTime: new Date(),
-        syncConflicts: conflicts,
-        syncProgress: null,
+      // Return immediately - sync continues in background
+      set({ 
+        isSyncing: false, // Allow app to continue
+        syncProgress: { message: 'Sync running in background...', progress: 0 },
+        lastSyncTime: new Date()
       });
 
-      await state.refreshFiles();
-      await state.rebuildTagsIndex(useAppStore.getState().files);
-      await state.buildSearchIndex();
     } catch (error) {
       console.error('Sync failed:', error);
       set({ isSyncing: false, syncProgress: null });
@@ -835,6 +857,10 @@ export const useAppStore = create<AppState>((set) => ({
       handleAsyncError('Add current folder to account')(error);
       throw error;
     }
+  },
+
+  getSyncQueueStatus: () => {
+    return SyncService.getQueueStatus();
   },
 
   openLocalVault: async (vaultName: string) => {

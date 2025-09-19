@@ -6,6 +6,7 @@ import AuthModal from './AuthModal/AuthModal';
 import ConfirmModal from './ConfirmModal/ConfirmModal';
 import { ConflictResolutionModal } from './ConflictResolutionModal';
 import { VaultSelector } from './VaultSelector';
+import { BackgroundSyncStatus } from './BackgroundSyncStatus';
 import LoadingIcon from './icons/LoadingIcon';
 import UserMenu from './UserMenu/UserMenu';
 import { ThemeToggle } from './common/ThemeToggle';
@@ -227,6 +228,7 @@ export const App: React.FC = () => {
         onConfirm={() => console.log('Confirm')}
         onCancel={() => console.log('Cancel')}
       />
+      <BackgroundSyncStatus />
     </div>
   );
 };

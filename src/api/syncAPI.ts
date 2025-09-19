@@ -251,10 +251,28 @@ export class SyncAPI {
         }
         return "";
     }
+    
     static async uploadFileContent(url: string, content: string): Promise<boolean> {
         if (window.electronAPI && window.electronAPI.uploadFileContent) {
             return await window.electronAPI.uploadFileContent(url, content);
         }
         return false;
+    }
+
+    static async batchCheckSync(vaultId: string, batches: SyncCheckRequest[]): Promise<SyncCheckResponse[]> {
+        const promises = batches.map(batch => this.checkSync(vaultId, batch));
+        return Promise.all(promises);
+    }
+
+    static async batchDownloadFiles(downloads: Array<{ vaultId: string; fileId: string; version?: number }>): Promise<Array<{ fileId: string; content: string; error?: string }>> {
+        const promises = downloads.map(async ({ vaultId, fileId, version }) => {
+            try {
+                const result = await this.downloadFile(vaultId, fileId, version);
+                return { fileId, content: result.encryptedContent };
+            } catch (error) {
+                return { fileId, content: '', error: String(error) };
+            }
+        });
+        return Promise.all(promises);
     }
 }
