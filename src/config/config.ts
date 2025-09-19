@@ -1,5 +1,5 @@
 export const config = {
-    apiBaseUrl: 'http://localhost:5197/api',
+    apiBaseUrl: 'https://api.inkgoose.binarygoose.dev/api',
 
     tokenKeys: {
         accessToken: 'ink-goose-access-token',
