@@ -84,7 +84,6 @@ export const App: React.FC = () => {
       const vaultPath = await FileSystemAPI.selectVaultFolder();
       if (vaultPath) {
         await selectLocalVault(vaultPath);
-        console.log('Selected vault:', vaultPath);
       }
     } catch (error) {
       console.error('Failed to open vault:', error);

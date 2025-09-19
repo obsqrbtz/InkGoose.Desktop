@@ -44,7 +44,6 @@ export class SearchService {
         }
 
         this.isIndexing = true;
-        console.log('Building search index...');
 
         try {
             this.notes.clear();
@@ -58,8 +57,7 @@ export class SearchService {
                     console.warn(`Failed to index file ${file.path}:`, error);
                 }
             }
-
-            console.log(`Search index built with ${this.notes.size} notes`);
+            
         } finally {
             this.isIndexing = false;
         }

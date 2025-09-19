@@ -194,10 +194,6 @@ export class ConflictResolver {
         serverContent: string
     ): Promise<ConflictResolutionChoice> {
         return new Promise((resolve, reject) => {
-            console.log(`${conflictInfo.conflictType.toUpperCase()} conflict detected for file:`, conflictInfo.relativePath);
-            console.log('Local version:', conflictInfo.localVersion, 'Server version:', conflictInfo.serverVersion);
-            console.log('Dispatching showConflictDialog event...');
-
             const event = new CustomEvent('showConflictDialog', {
                 detail: {
                     conflictInfo,

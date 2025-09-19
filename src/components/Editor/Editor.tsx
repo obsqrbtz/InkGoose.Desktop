@@ -235,10 +235,8 @@ const Editor: React.FC = () => {
         await FileSystemAPI.writeFile(currentFile.path, content);
         updateNoteTags(currentFile.path, currentFile.name, content);
         setHasUnsavedChanges(false);
-        console.log('File ' + currentFile.name + ' saved successfully');
       } catch (error) {
         console.error('Failed to save file: ' + currentFile.name + ': ' + error);
-        alert('Failed to save file: ' + error);
       }
     }
   };

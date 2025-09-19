@@ -29,11 +29,7 @@ export const ConflictResolutionModal: React.FC = () => {
     const [isResolving, setIsResolving] = useState(false);
 
     useEffect(() => {
-        console.log('ConflictResolutionModal mounted, setting up event listener');
-
         const handleShowConflictDialog = (event: CustomEvent<ConflictDialogData>) => {
-            console.log('Received showConflictDialog event:', event);
-            console.log('Event detail:', event.detail);
             setConflictData(event.detail);
             setIsOpen(true);
             setSelectedResolution('keep-local');
@@ -44,7 +40,6 @@ export const ConflictResolutionModal: React.FC = () => {
         window.addEventListener('showConflictDialog', handleShowConflictDialog as EventListener);
 
         return () => {
-            console.log('ConflictResolutionModal unmounting, removing event listener');
             window.removeEventListener('showConflictDialog', handleShowConflictDialog as EventListener);
         };
     }, []);

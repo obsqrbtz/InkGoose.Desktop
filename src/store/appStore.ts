@@ -519,10 +519,9 @@ export const useAppStore = create<AppState>((set) => ({
         const storedMasterKey = await CryptoService.retrieveMasterKeySecurely(user.id.toString());
         if (storedMasterKey) {
           CryptoService.setMasterKey(storedMasterKey);
-          console.log('Master key restored from secure storage');
           await useAppStore.getState().initializeUserVaults();
         } else {
-          console.log('No stored master key found - user will need to re-enter password');
+          console.log('No stored master key found');
           await ensureUserDirectories(user.username);
           await useAppStore.getState().loadLocalVaults();
         }

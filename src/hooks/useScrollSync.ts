@@ -48,17 +48,6 @@ export const useScrollSync = ({ enabled, editorRef, previewRef, currentFile }: U
             const editorElement = editorRef.current?.querySelector('.cm-scroller') as HTMLElement;
             const previewElement = previewRef.current;
 
-            console.log('Setting up scroll sync...', {
-                enabled,
-                editorRef: editorRef.current,
-                previewRef: previewRef.current,
-                editorElement,
-                previewElement,
-                cmScroller: editorRef.current?.querySelector('.cm-scroller'),
-                virtualPreview: previewRef.current?.querySelector('.virtual-preview'),
-                markdownPreview: previewRef.current?.querySelector('.markdown-preview')
-            });
-
             if (!editorElement || !previewElement) {
                 console.warn('Scroll sync: Could not find editor or preview elements', {
                     editorElement: !!editorElement,
@@ -69,27 +58,20 @@ export const useScrollSync = ({ enabled, editorRef, previewRef, currentFile }: U
                 return;
             }
 
-            console.log('Scroll sync: Elements found, setting up listeners');
-
             const handleEditorScroll = () => {
                 if (syncingRef.current === 'editor') return;
-                console.log('Editor scroll detected, syncing to preview');
                 syncScrollPosition(editorElement, previewElement, 'editor');
             };
 
             const handlePreviewScroll = () => {
                 if (syncingRef.current === 'preview') return;
-                console.log('Preview scroll detected, syncing to editor');
                 syncScrollPosition(previewElement, editorElement, 'preview');
             };
 
             editorElement.addEventListener('scroll', handleEditorScroll, { passive: true });
             previewElement.addEventListener('scroll', handlePreviewScroll, { passive: true });
 
-            console.log('Scroll sync: Event listeners added');
-
             return () => {
-                console.log('Scroll sync: Cleaning up event listeners');
                 editorElement.removeEventListener('scroll', handleEditorScroll);
                 previewElement.removeEventListener('scroll', handlePreviewScroll);
                 if (timeoutRef.current) {

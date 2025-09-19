@@ -211,9 +211,8 @@ export class CryptoService {
             try {
                 const keyData = this.uint8ArrayToBase64(masterKey);
                 await window.electronAPI.safeStorage.storeSecureKey(`ink-goose-master-key-${userId}`, keyData);
-                console.log('Master key stored securely');
             } catch (error) {
-                console.error('Failed to store master key securely:', error);
+                console.error('Failed to store master key:', error);
                 throw error;
             }
         } else {
@@ -243,7 +242,6 @@ export class CryptoService {
         if (typeof window !== 'undefined' && window.electronAPI?.safeStorage) {
             try {
                 await window.electronAPI.safeStorage.deleteSecureKey(`ink-goose-master-key-${userId}`);
-                console.log('Master key deleted from secure storage');
             } catch (error) {
                 console.warn('Failed to delete secure master key:', error);
             }

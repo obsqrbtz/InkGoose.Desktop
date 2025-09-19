@@ -142,8 +142,6 @@ export class SyncService {
                 contentHash: localFile.contentHash,
             };
 
-            console.log('Uploading file:', localFile.relativePath, 'version:', nextVersion);
-
             const response = await SyncAPI.uploadFile(vaultId, uploadRequest, encryptedContent);
 
             if (response.success) {
@@ -154,11 +152,8 @@ export class SyncService {
                     lastSynced: new Date().toISOString(),
                 };
                 await this.writeSyncMetadata(vaultPath, updatedMetadata);
-                console.log('Upload successful for:', localFile.relativePath, 'new version:', response.version);
             } else {
                 if (response.conflict) {
-                    console.log('Version conflict detected for:', localFile.relativePath);
-
                     const resolvedResponse = await ConflictResolver.handleUploadConflict(
                         vaultId,
                         uploadRequest,
@@ -174,7 +169,6 @@ export class SyncService {
                             lastSynced: new Date().toISOString(),
                         };
                         await this.writeSyncMetadata(vaultPath, updatedMetadata);
-                        console.log('Conflict resolved and upload successful for:', localFile.relativePath);
                     } else {
                         throw new Error('Failed to resolve conflict during upload');
                     }
@@ -190,8 +184,6 @@ export class SyncService {
 
     static async downloadFile(vaultId: string, vaultPath: string, fileId: string, relativePath: string, version?: number): Promise<void> {
         try {
-            console.log('Downloading file:', relativePath, 'version:', version || 'latest');
-
             const fullPath = `${vaultPath}/${relativePath}`;
             const metadata = await this.readSyncMetadata(vaultPath);
             const fileMetadata = metadata[relativePath];
@@ -209,15 +201,13 @@ export class SyncService {
                 const lastSyncedHash = fileMetadata?.hash;
 
                 if (lastSyncedHash && localHash !== lastSyncedHash) {
-                    console.log('Local file has been modified since last sync, potential conflict');
                     hasLocalConflict = true;
                 }
             } catch (error) {
-                console.log('Local file does not exist, no conflict');
+                // todo: handle errors
             }
 
             if (hasLocalConflict) {
-                console.log('Handling download conflict for:', relativePath);
                 const resolution = await ConflictResolver.handleDownloadConflict(
                     vaultId,
                     fileId,
@@ -244,7 +234,6 @@ export class SyncService {
                 await this.writeSyncMetadata(vaultPath, metadata);
 
                 if (resolution.shouldUpload && resolution.uploadRequest) {
-                    console.log('Uploading resolved content for:', relativePath);
                     const nextVersion = (version || 1) + 1;
                     const uploadRequest = {
                         ...resolution.uploadRequest,
@@ -256,14 +245,12 @@ export class SyncService {
                         if (uploadResponse.success) {
                             metadata[relativePath].version = uploadResponse.version;
                             await this.writeSyncMetadata(vaultPath, metadata);
-                            console.log('Upload after conflict resolution successful');
                         }
                     } catch (uploadError) {
                         console.error('Failed to upload resolved content:', uploadError);
                     }
                 }
 
-                console.log('Download conflict resolved for:', relativePath);
                 return;
             }
 
@@ -289,7 +276,6 @@ export class SyncService {
                 lastSynced: new Date().toISOString(),
             };
             await this.writeSyncMetadata(vaultPath, metadata);
-            console.log('Download successful for:', relativePath, 'version:', fileVersion.version);
         } catch (error) {
             console.error(`Failed to download file ${relativePath}:`, error);
             throw error;

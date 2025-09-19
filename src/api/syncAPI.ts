@@ -168,8 +168,6 @@ export class SyncAPI {
         const url = `${config.apiBaseUrl}${endpoint}`;
         const token = AuthAPI.getAccessToken();
 
-        console.log('Making sync API request to:', url, 'method:', options.method || 'GET');
-
         const response = await fetch(url, {
             ...options,
             headers: {
@@ -186,7 +184,6 @@ export class SyncAPI {
 
         const text = await response.text();
         const result = text ? JSON.parse(text) : ({} as T);
-        console.log('Sync API request successful:', url, 'response length:', text.length);
         return result;
     }
 

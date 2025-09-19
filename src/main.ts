@@ -161,11 +161,10 @@ ipcMain.handle('read-file', async (_, filePath: string) => {
 	try {
 		return await fs.promises.readFile(filePath, 'utf8');
 	} catch (error) {
-		// Only log the error if it's not a simple "file not found" for sync metadata
 		const nodeError = error as NodeJS.ErrnoException;
-		if (nodeError.code !== 'ENOENT' || !filePath.includes('.ink-goose-sync.json')) {
-			console.error('Failed to read file:', error);
-		}
+		if (nodeError.code === 'ENOENT') {
+            return ''; // or null
+        }
 		throw error;
 	}
 });
@@ -411,10 +410,8 @@ ipcMain.handle('safe-storage-store', async (_, key: string, value: string) => {
 
 		const keyFilePath = path.join(secureStorePath, `${key}.enc`);
 		await fs.promises.writeFile(keyFilePath, encrypted);
-
-		console.log('Stored secure key:', key);
 	} catch (error) {
-		console.error('Failed to store secure key:', error);
+		console.error('Failed to save secure key:', error);
 		throw error;
 	}
 });
@@ -437,8 +434,6 @@ ipcMain.handle('safe-storage-get', async (_, key: string) => {
 
 		const encrypted = await fs.promises.readFile(keyFilePath);
 		const decrypted = safeStorage.decryptString(encrypted);
-
-		console.log('Retrieved secure key:', key);
 		return decrypted;
 	} catch (error) {
 		console.error('Failed to retrieve secure key:', error);
@@ -453,7 +448,6 @@ ipcMain.handle('safe-storage-delete', async (_, key: string) => {
 
 		try {
 			await fs.promises.unlink(keyFilePath);
-			console.log('Deleted secure key:', key);
 		} catch (error) {
 			console.log('Secure key file not found for deletion:', key);
 		}
