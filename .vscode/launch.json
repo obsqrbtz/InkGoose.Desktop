@@ -1,0 +1,48 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Electron: Main (Forge)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "electron-forge",
+                "start",
+                "--inspect-electron"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/.vite/build/**/*.js"
+            ],
+            "console": "integratedTerminal",
+            "outputCapture": "std",
+            "autoAttachChildProcesses": true,
+            "skipFiles": [
+                "<node_internals>/**",
+                "**/node_modules/**"
+            ]
+        },
+        {
+            "name": "Electron: Attach Renderer",
+            "type": "msedge",
+            "request": "attach",
+            "address": "127.0.0.1",
+            "port": 9222,
+            "webRoot": "${workspaceFolder}",
+            "targetSelection": "pick",
+            "timeout": 60000,
+            "trace": true
+        },
+    ],
+    "compounds": [
+        {
+            "name": "Electron: Full (Main + Attach Renderer)",
+            "configurations": [
+                "Electron: Main (Forge)",
+                "Electron: Attach Renderer"
+            ]
+        }
+    ]
+}

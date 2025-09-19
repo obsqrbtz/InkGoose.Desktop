@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Ink Goose</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <script>
+    // Create placeholder link nodes so App.tsx can attach final URLs
+    (function ensureHljsLinks(){
+      const head = document.head;
+      const ids = ['hljs-theme-light','hljs-theme-dark'];
+      for (const id of ids) {
+        if (!document.getElementById(id)) {
+          const link = document.createElement('link');
+          link.id = id;
+          link.rel = 'stylesheet';
+          link.disabled = true;
+          link.media = 'not all';
+          head.appendChild(link);
+        }
+      }
+    })();
+    const toggleHljs = () => {
+      const app = document.querySelector('.app');
+      const theme = app?.getAttribute?.('data-theme') || 'dark';
+      const light = document.getElementById('hljs-theme-light');
+      const dark = document.getElementById('hljs-theme-dark');
+      if (light && dark) {
+        if (theme === 'dark') {
+          dark.disabled = false; light.disabled = true;
+        } else {
+          light.disabled = false; dark.disabled = true;
+        }
+      }
+    };
+    const setupObservers = () => {
+      const obs = new MutationObserver(toggleHljs);
+      const observeApp = () => {
+        const app = document.querySelector('.app');
+        if (app) obs.observe(app, { attributes: true, attributeFilter: ['data-theme'] });
+      };
+      observeApp();
+      const rootObs = new MutationObserver(observeApp);
+      const body = document.body;
+      if (body) rootObs.observe(body, { childList: true, subtree: true });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        toggleHljs();
+        setupObservers();
+      });
+    } else {
+      toggleHljs();
+      setupObservers();
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/renderer.ts"></script>
+</body>
+
+</html>

@@ -1,0 +1,53 @@
+.resizable-splitter-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.resizable-pane {
+    overflow: hidden;
+    min-width: 0;
+}
+
+.splitter-handle {
+    width: 6px;
+    cursor: col-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-secondary);
+    transition: background-color 0.2s;
+    user-select: none;
+}
+
+.splitter-handle:hover {
+    background-color: var(--bg-hover);
+}
+
+.splitter-handle.dragging {
+    background-color: var(--accent-color);
+}
+
+.splitter-line {
+    width: 1px;
+    height: 100%;
+    background-color: var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.splitter-handle:hover .splitter-line,
+.splitter-handle.dragging .splitter-line {
+    background-color: var(--accent-color);
+}
+
+.resizable-pane>* {
+    width: 100%;
+    height: 100%;
+}
+
+.resizable-pane .editor-pane,
+.resizable-pane .preview-pane {
+    height: 100%;
+    width: 100%;
+}

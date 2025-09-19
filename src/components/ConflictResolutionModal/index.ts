@@ -1,0 +1,1 @@
+export { ConflictResolutionModal } from './ConflictResolutionModal';

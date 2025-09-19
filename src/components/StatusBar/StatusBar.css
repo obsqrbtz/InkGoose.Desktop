@@ -1,0 +1,39 @@
+/* Status Bar */
+.status-bar {
+  height: 24px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-left,
+.status-center,
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-center {
+  flex: 1;
+  justify-content: center;
+}
+
+.vault-info,
+.file-stats {
+  white-space: nowrap;
+}
+
+.vault-info {
+  color: var(--text-secondary);
+}
+
+.file-stats {
+  color: var(--text-primary);
+  font-weight: 500;
+}

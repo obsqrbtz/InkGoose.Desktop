@@ -1,0 +1,50 @@
+.context-menu {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 160px;
+    z-index: 1000;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background-color 0.2s;
+}
+
+.context-menu-item:hover:not(.disabled) {
+    background-color: var(--bg-hover);
+}
+
+.context-menu-item.danger {
+    color: var(--error-color, #ef4444);
+}
+
+.context-menu-item.danger:hover:not(.disabled) {
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.context-menu-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.context-menu-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.context-menu-label {
+    flex: 1;
+}
