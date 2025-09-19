@@ -443,64 +443,6 @@ export class SyncService {
         }
     }
 
-    static async performFullSync(
-        vaultId: string,
-        vaultPath: string,
-        fileTree: FileNode[],
-        onProgress?: (status: string, progress: number) => void
-    ): Promise<SyncConflict[]> {
-        try {
-            onProgress?.('Checking for changes...', 0);
-
-            const { actions } = await this.checkSync(vaultId, vaultPath, fileTree);
-            const localFiles = await this.getLocalFiles(vaultPath, fileTree);
-
-            this.syncProgress.set(vaultId, {
-                total: actions.length,
-                completed: 0,
-                failed: 0,
-                inProgress: 0,
-                status: 'syncing'
-            });
-
-            if (onProgress) {
-                this.progressCallbacks.set(vaultId, (progress) => {
-                    const percent = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
-                    onProgress(progress.status, percent);
-                });
-            }
-
-            for (const action of actions) {
-                const localFile = localFiles.find(f => f.path === action.path);
-
-                switch (action.action) {
-                    case SyncAction.Upload:
-                        if (localFile) {
-                            this.queueOperation('upload', vaultId, vaultPath, localFile, 2);
-                        }
-                        break;
-                    case SyncAction.Download:
-                        if (action.fileId) {
-                            const relativePath = localFile ? this.getRelativePath(action.path, vaultPath) : action.path;
-                            this.queueOperation('download', vaultId, vaultPath, {
-                                fileId: action.fileId,
-                                relativePath,
-                                version: action.serverVersion
-                            }, 1);
-                        }
-                        break;
-                }
-            }
-
-            // Return immediately - sync continues in background
-            onProgress?.('Sync started in background', 0);
-            return [];
-        } catch (error) {
-            console.error('Full sync failed:', error);
-            throw error;
-        }
-    }
-
     static async performBackgroundSync(
         vaultId: string,
         vaultPath: string,

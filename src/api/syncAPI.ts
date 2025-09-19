@@ -259,11 +259,6 @@ export class SyncAPI {
         return false;
     }
 
-    static async batchCheckSync(vaultId: string, batches: SyncCheckRequest[]): Promise<SyncCheckResponse[]> {
-        const promises = batches.map(batch => this.checkSync(vaultId, batch));
-        return Promise.all(promises);
-    }
-
     static async batchDownloadFiles(downloads: Array<{ vaultId: string; fileId: string; version?: number }>): Promise<Array<{ fileId: string; content: string; error?: string }>> {
         const promises = downloads.map(async ({ vaultId, fileId, version }) => {
             try {
