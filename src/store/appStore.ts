@@ -1,10 +1,9 @@
 import { create } from 'zustand';
 import { FileNode, Note, AppSettings, SearchResult, TagsByName, NoteTagsMap, TagFileRef, SyncConflict } from '../types';
 import { resolveTheme } from '../utils/theme';
-import { FileSystemAPI } from '../api/fileSystemAPI';
 import { AuthAPI, User, KdfParams } from '../../packages/core/api/authAPI';
 import { SyncAPI, VaultSummary, CreateVaultResponse } from '../../packages/core/api/syncAPI';
-import { SyncService } from '../services/syncService';
+import { SyncService } from '../../packages/core/services/syncService';
 import { CryptoService } from '../services/cryptoService';
 import { extractTags } from '../utils/tags';
 import { searchService } from '../utils/searchService';
@@ -12,11 +11,14 @@ import { config } from '../config/config';
 import { electronHttpClient } from '../adapters/electronHttpClient';
 import { ElectronConflictDialog } from '../components/ConflictResolutionModal/conflictDialog';
 import { ConflictResolver } from '../../packages/core/services/conflictResolver';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
 
 const http = electronHttpClient;
 const syncAPI = new SyncAPI(http);
 const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
-const syncService = new SyncService(syncAPI, conflictResolver);
+
+const fileSystem = new ElectronFileSystem();
+const syncService = new SyncService(syncAPI, conflictResolver, fileSystem);
 
 interface AppState {
   // Vault and files
@@ -175,7 +177,7 @@ const initializeAfterAuth = async () => {
 
 const ensureUserDirectories = async (username: string) => {
   try {
-    await FileSystemAPI.initializeUserDirectories(username);
+    await fileSystem.initializeUserDirectories(username);
   } catch (error) {
     console.error('Failed to initialize user directories:', error);
   }
@@ -289,7 +291,7 @@ export const useAppStore = create<AppState>((set) => ({
           await walk(node.children);
         } else if (node.type === 'file' && node.extension === '.md') {
           try {
-            const content = await FileSystemAPI.readFile(node.path);
+            const content = await fileSystem.readFile(node.path);
             const tags = extractTags(content);
             noteTags[node.path] = tags;
             const ref: TagFileRef = { path: node.path, name: node.name };
@@ -342,7 +344,7 @@ export const useAppStore = create<AppState>((set) => ({
     const state = useAppStore.getState();
     return withVault(async () => {
       try {
-        const files = await FileSystemAPI.loadVault(state.vault as string);
+        const files = await fileSystem.loadVault(state.vault as string);
         set({ files });
         await state.rebuildTagsIndex(files);
         await state.buildSearchIndex();
@@ -357,7 +359,7 @@ export const useAppStore = create<AppState>((set) => ({
     return withVault(async () => {
       try {
         const notePath = `${dirPath}/${name}.md`;
-        await FileSystemAPI.createFile(notePath, '# ' + name + '\n\n');
+        await fileSystem.createFile(notePath, '# ' + name + '\n\n');
         await state.refreshFiles();
       } catch (error) {
         handleAsyncError('Create note')(error);
@@ -370,7 +372,7 @@ export const useAppStore = create<AppState>((set) => ({
     return withVault(async () => {
       try {
         const dirPath = `${parentPath}/${name}`;
-        await FileSystemAPI.createDirectory(dirPath);
+        await fileSystem.createDirectory(dirPath);
         await state.refreshFiles();
       } catch (error) {
         handleAsyncError('Create directory')(error);
@@ -382,7 +384,7 @@ export const useAppStore = create<AppState>((set) => ({
     const state = useAppStore.getState();
     return withVault(async () => {
       try {
-        await FileSystemAPI.deleteFile(path);
+        await fileSystem.deleteFile(path);
         if (state.currentFile?.path === path) {
           set({ currentFile: null });
         }
@@ -410,7 +412,7 @@ export const useAppStore = create<AppState>((set) => ({
           newPath = pathParts.join('/');
         }
 
-        await FileSystemAPI.renameFile(oldPath, newPath);
+        await fileSystem.renameFile(oldPath, newPath);
 
         const finalName = newPath.split(/[/\\]/).pop() || newNameOrPath;
 
@@ -618,7 +620,7 @@ export const useAppStore = create<AppState>((set) => ({
       const state = useAppStore.getState();
       const user = state.user as User;
       try {
-        const vaults = await FileSystemAPI.listUserVaults(user.username);
+        const vaults = await fileSystem.listUserVaults(user.username);
         set({ localVaults: vaults });
       } catch (error) {
         handleAsyncError('Load local vaults')(error);
@@ -634,8 +636,8 @@ export const useAppStore = create<AppState>((set) => ({
 
     try {
       const newVault = await syncAPI.createVault({ name, description });
-      const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, name);
-      await FileSystemAPI.ensureDirectory(vaultPath);
+      const vaultPath = await fileSystem.getVaultPath(state.user.username, name);
+      await fileSystem.ensureDirectory(vaultPath);
 
       set((currentState) => ({
         availableVaults: [...currentState.availableVaults, {
@@ -660,8 +662,8 @@ export const useAppStore = create<AppState>((set) => ({
     }
 
     try {
-      const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, name);
-      await FileSystemAPI.ensureDirectory(vaultPath);
+      const vaultPath = await fileSystem.getVaultPath(state.user.username, name);
+      await fileSystem.ensureDirectory(vaultPath);
       await state.loadLocalVaults();
       return vaultPath;
     } catch (error) {
@@ -684,8 +686,8 @@ export const useAppStore = create<AppState>((set) => ({
         return;
       }
 
-      const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, vault.name);
-      await FileSystemAPI.ensureDirectory(vaultPath);
+      const vaultPath = await fileSystem.getVaultPath(state.user.username, vault.name);
+      await fileSystem.ensureDirectory(vaultPath);
       await state.selectLocalVault(vaultPath);
 
       set({ currentVaultId: vaultId });
@@ -698,7 +700,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   selectLocalVault: async (vaultPath) => {
     try {
-      const fileTree = await FileSystemAPI.loadVault(vaultPath);
+      const fileTree = await fileSystem.loadVault(vaultPath);
       set({ vault: vaultPath, files: fileTree });
 
       const state = useAppStore.getState();
@@ -751,8 +753,8 @@ export const useAppStore = create<AppState>((set) => ({
       if (vaultToSync) {
         const vault = updatedState.availableVaults.find(v => v.id === vaultToSync);
         if (vault && updatedState.user) {
-          const vaultPath = await FileSystemAPI.getVaultPath(updatedState.user.username, vault.name);
-          await FileSystemAPI.ensureDirectory(vaultPath);
+          const vaultPath = await fileSystem.getVaultPath(updatedState.user.username, vault.name);
+          await fileSystem.ensureDirectory(vaultPath);
 
           await state.selectLocalVault(vaultPath);
           set({ currentVaultId: vaultToSync });
@@ -839,17 +841,17 @@ export const useAppStore = create<AppState>((set) => ({
     }
 
     try {
-      const dirCheck = await FileSystemAPI.checkDirectoryContent(currentFolderPath);
+      const dirCheck = await fileSystem.checkDirectoryContent(currentFolderPath);
       if (!dirCheck.isDirectory) {
         throw new Error('Source path is not a directory');
       }
 
       const newVault = await syncAPI.createVault({ name: vaultName, description: `Imported from ${currentFolderPath}` });
-      const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, vaultName);
-      await FileSystemAPI.ensureDirectory(vaultPath);
+      const vaultPath = await fileSystem.getVaultPath(state.user.username, vaultName);
+      await fileSystem.ensureDirectory(vaultPath);
 
       if (dirCheck.hasContent) {
-        await FileSystemAPI.copyFolderContents(currentFolderPath, vaultPath);
+        await fileSystem.copyFolderContents(currentFolderPath, vaultPath);
       }
 
       set((currentState) => ({
@@ -879,8 +881,8 @@ export const useAppStore = create<AppState>((set) => ({
     }
 
     try {
-      const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, vaultName);
-      const dirCheck = await FileSystemAPI.checkDirectoryContent(vaultPath);
+      const vaultPath = await fileSystem.getVaultPath(state.user.username, vaultName);
+      const dirCheck = await fileSystem.checkDirectoryContent(vaultPath);
 
       if (!dirCheck.isDirectory) {
         throw new Error(`Vault directory not found: ${vaultPath}`);

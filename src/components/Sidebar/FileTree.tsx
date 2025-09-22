@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FileNode } from '../../types';
 import { useAppStore } from '../../store/appStore';
-import { FileSystemAPI } from '../../api/fileSystemAPI';
 import { extractTags } from '../../utils/tags';
 import FolderIcon from '../icons/FolderIcon';
 import FolderOpenIcon from '../icons/FolderOpenIcon';
@@ -13,6 +12,8 @@ import PlusIcon from '../icons/PlusIcon';
 import ContextMenu, { ContextMenuItem } from '../ContextMenu/ContextMenu';
 import InputModal from '../InputModal/InputModal';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
+import { ElectronFileSystem } from '../../adapters/electronfileSystem';
+import { parseMarkdownFile, extractLinks } from '../../../packages/core/utils/markdown';
 
 interface FileTreeProps {
   files: FileNode[];
@@ -284,13 +285,14 @@ const FileItem: React.FC<FileItemProps> = ({ file, level, onContextMenu }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const { setCurrentFile, addTab, updateNoteTags } = useAppStore();
+  const fileSystem = new ElectronFileSystem();
 
   const handleFileClick = async () => {
     if (file.type === 'file' && file.extension === '.md') {
       try {
-        const content = await FileSystemAPI.readFile(file.path);
-        const { frontMatter, body } = FileSystemAPI.parseMarkdownFile(content);
-        const links = FileSystemAPI.extractLinks(body);
+        const content = await fileSystem.readFile(file.path);
+        const { frontMatter, body } = parseMarkdownFile(content);
+        const links = extractLinks(body);
         const tags = extractTags(content);
 
         const note = {

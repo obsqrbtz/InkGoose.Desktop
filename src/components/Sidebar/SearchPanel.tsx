@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
 import { SearchResult } from '../../types';
-import { FileSystemAPI } from '../../api/fileSystemAPI';
 import LoadingIcon from '../icons/LoadingIcon';
 import SearchIcon from '../icons/SearchIcon';
+import { ElectronFileSystem } from '../../adapters/electronfileSystem';
 
 const SearchPanel: React.FC = () => {
   const {
@@ -17,6 +17,8 @@ const SearchPanel: React.FC = () => {
     setCurrentFile,
     addTab
   } = useAppStore();
+
+  const fileSystem = new ElectronFileSystem();
   const [localQuery, setLocalQuery] = useState(searchQuery);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ const SearchPanel: React.FC = () => {
 
   const handleResultClick = async (result: SearchResult) => {
     try {
-      const content = await FileSystemAPI.readFile(result.file.path);
+      const content = await fileSystem.readFile(result.file.path);
       const note = {
         path: result.file.path,
         name: result.file.name,

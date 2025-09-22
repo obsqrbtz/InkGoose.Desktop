@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { SyncService } from '../services/syncService';
+import { SyncService } from '../../packages/core/services/syncService';
 import { electronHttpClient } from '../adapters/electronHttpClient';
 import { SyncAPI } from '../../packages/core/api/syncAPI';
 import { ElectronConflictDialog } from './ConflictResolutionModal/conflictDialog';
 import { ConflictResolver } from '../../packages/core/services/conflictResolver';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
 
 interface BackgroundSyncStatusProps {
   className?: string;
@@ -19,7 +20,8 @@ export const BackgroundSyncStatus: React.FC<BackgroundSyncStatusProps> = ({ clas
   const http = electronHttpClient;
   const syncAPI = new SyncAPI(http);
   const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
-  const syncService = new SyncService(syncAPI, conflictResolver);
+  const fileSystem = new ElectronFileSystem();
+  const syncService = new SyncService(syncAPI, conflictResolver, fileSystem);
 
 
   

@@ -1,6 +1,6 @@
 import { Document } from 'flexsearch';
 import { FileNode, SearchResult } from '../types';
-import { FileSystemAPI } from '../api/fileSystemAPI';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
 
 interface IndexedNote {
     id: string;
@@ -16,6 +16,7 @@ export class SearchService {
     private index: Document<IndexedNote>;
     private notes: Map<string, IndexedNote> = new Map();
     private isIndexing = false;
+    private fileSystem = new ElectronFileSystem();
 
     constructor() {
         this.index = new Document<IndexedNote>({
@@ -82,7 +83,7 @@ export class SearchService {
 
     private async indexFile(file: FileNode): Promise<void> {
         try {
-            const content = await FileSystemAPI.readFile(file.path);
+            const content = await this.fileSystem.readFile(file.path);
             const title = this.extractTitle(content, file.name);
             const tags = this.extractTags(content);
 

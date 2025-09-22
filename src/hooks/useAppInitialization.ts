@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { FileSystemAPI } from '../api/fileSystemAPI';
 import { config } from '../config/config';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
+
+const fileSystem = new ElectronFileSystem();
 
 export const useAppInitialization = () => {
     const [loading, setLoading] = useState(true);
@@ -24,7 +26,7 @@ export const useAppInitialization = () => {
                 const savedVaultPath = localStorage.getItem(config.localStorage.vaultPath);
                 if (savedVaultPath) {
                     try {
-                        const fileTree = await FileSystemAPI.loadVault(savedVaultPath);
+                        const fileTree = await fileSystem.loadVault(savedVaultPath);
                         if (fileTree.length > 0) {
                             setVault(savedVaultPath);
                             setFiles(fileTree);

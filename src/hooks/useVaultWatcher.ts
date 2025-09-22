@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { FileSystemAPI } from '../api/fileSystemAPI';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
 
 export const useVaultWatcher = () => {
     const { vault, setFiles, rebuildTagsIndex, buildSearchIndex } = useAppStore();
+    const fileSystem = new ElectronFileSystem();
 
     useEffect(() => {
         if (!vault) return;
@@ -17,7 +18,7 @@ export const useVaultWatcher = () => {
             debounceTimer = window.setTimeout(async () => {
                 if (!vault || disposed) return;
                 try {
-                    const tree = await FileSystemAPI.loadVault(vault);
+                    const tree = await fileSystem.loadVault(vault);
                     setFiles(tree);
                     await rebuildTagsIndex(tree);
                     await buildSearchIndex();
@@ -27,7 +28,7 @@ export const useVaultWatcher = () => {
             }, 200);
         };
 
-        FileSystemAPI.watchVault(vault, (evt, p) => {
+        fileSystem.watchVault(vault, (evt, p) => {
             void evt; void p;
             triggerRefresh();
         }).then((dispose) => {

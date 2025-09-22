@@ -7,7 +7,6 @@ import { markedHighlight } from 'marked-highlight';
 // eslint-disable-next-line import/no-unresolved
 import hljs from 'highlight.js/lib/common';
 import { useAppStore } from '../../store/appStore';
-import { FileSystemAPI } from '../../api/fileSystemAPI';
 import './Editor.css';
 import EyeIcon from '../icons/EyeIcon';
 import EditIcon from '../icons/EditIcon';
@@ -18,6 +17,8 @@ import { inkGooseDark, inkGooseLight } from '../../styles/codemirrorTheme';
 import { formatFileSize } from '../../utils/fileUtils';
 import ResizableSplitter from './ResizableSplitter';
 import { useScrollSync } from '../../hooks/useScrollSync';
+import { parseMarkdownFile } from '../../../packages/core/utils/markdown';
+import { ElectronFileSystem } from '../../adapters/electronfileSystem';
 
 marked.use(
   markedHighlight({
@@ -56,6 +57,8 @@ const LARGE_FILE_THRESHOLD = 100000; // 100KB
 const CHUNK_SIZE = 50000; // 50KB
 const RENDER_DELAY = 16;
 
+const fileSystem = new ElectronFileSystem();
+
 interface VirtualPreviewProps {
   content: string;
   isLargeFile: boolean;
@@ -70,7 +73,7 @@ const VirtualPreview: React.FC<VirtualPreviewProps> = ({ content, isLargeFile })
   const processContent = useCallback(async (fullContent: string) => {
 
     if (!isLargeFile) {
-      const { body } = FileSystemAPI.parseMarkdownFile(fullContent);
+      const { body } = parseMarkdownFile(fullContent);
       const html = marked.parse(body || '') as string;
       setRenderedContent(html);
       return;
@@ -80,7 +83,7 @@ const VirtualPreview: React.FC<VirtualPreviewProps> = ({ content, isLargeFile })
     setRenderProgress(0);
 
     try {
-      const { body } = FileSystemAPI.parseMarkdownFile(fullContent);
+      const { body } = parseMarkdownFile(fullContent);
       const chunks = [];
 
       const paragraphs = body.split(/\n\s*\n/);
@@ -232,7 +235,7 @@ const Editor: React.FC = () => {
     if (currentFile && viewRef.current && hasUnsavedChanges) {
       try {
         const content = viewRef.current.state.doc.toString();
-        await FileSystemAPI.writeFile(currentFile.path, content);
+        await fileSystem.writeFile(currentFile.path, content);
         updateNoteTags(currentFile.path, currentFile.name, content);
         setHasUnsavedChanges(false);
       } catch (error) {

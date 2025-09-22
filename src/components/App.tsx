@@ -13,7 +13,7 @@ import { ThemeToggle } from './common/ThemeToggle';
 import { useVaultWatcher } from '../hooks/useVaultWatcher';
 import { usePeriodicSync } from '../hooks/usePeriodicSync';
 import { useAppStore } from '../store/appStore';
-import { FileSystemAPI } from '../api/fileSystemAPI';
+import { ElectronFileSystem } from '../adapters/electronfileSystem';
 import { config } from '../config/config';
 
 export const App: React.FC = () => {
@@ -82,7 +82,8 @@ export const App: React.FC = () => {
 
   const handleOpenVault = async () => {
     try {
-      const vaultPath = await FileSystemAPI.selectVaultFolder();
+      const fileSystem = new ElectronFileSystem();
+      const vaultPath = await fileSystem.selectVaultFolder();
       if (vaultPath) {
         await selectLocalVault(vaultPath);
       }

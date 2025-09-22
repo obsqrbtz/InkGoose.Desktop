@@ -1,8 +1,8 @@
-import { SyncAPI, SyncAction, FileSyncInfo } from '../../packages/core/api/syncAPI';
+import { SyncAPI, SyncAction, FileSyncInfo } from '../api/syncAPI';
 import { FileSystemAPI } from '../api/fileSystemAPI';
-import { FileNode, LocalFileInfo, SyncConflict } from '../types';
-import { CryptoService } from './cryptoService';
-import { ConflictResolver } from '../../packages/core/services/conflictResolver';
+import { FileNode, LocalFileInfo, SyncConflict } from '../../../src/types';
+import { CryptoService } from '../../../src/services/cryptoService';
+import { ConflictResolver } from './conflictResolver';
 
 interface QueuedOperation {
     id: string;
@@ -24,7 +24,7 @@ interface SyncProgress {
 }
 
 export class SyncService {
-    constructor(private sync: SyncAPI, private conflictResolver: ConflictResolver) { }
+    constructor(private sync: SyncAPI, private conflictResolver: ConflictResolver, private fileSystem: FileSystemAPI) { }
     private readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';
     private readonly MAX_CONCURRENT_OPERATIONS = 5;
     private readonly MAX_RETRIES = 3;
@@ -49,7 +49,7 @@ export class SyncService {
     private async readSyncMetadata(vaultPath: string): Promise<Record<string, { version: number; hash: string; lastSynced: string }>> {
         try {
             const metadataPath = `${vaultPath}/${this.SYNC_METADATA_FILE}`;
-            const content = await FileSystemAPI.readFile(metadataPath);
+            const content = await this.fileSystem.readFile(metadataPath);
             return JSON.parse(content);
         } catch (error) {
             const nodeError = error as NodeJS.ErrnoException;
@@ -67,7 +67,7 @@ export class SyncService {
     private async writeSyncMetadata(vaultPath: string, metadata: Record<string, { version: number; hash: string; lastSynced: string }>): Promise<void> {
         try {
             const metadataPath = `${vaultPath}/${this.SYNC_METADATA_FILE}`;
-            await FileSystemAPI.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+            await this.fileSystem.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
         } catch (error) {
             console.error('Failed to write sync metadata:', error);
             throw error;
@@ -218,7 +218,7 @@ export class SyncService {
                     await collectFiles(node.children);
                 } else if (node.type === 'file' && node.extension === '.md' && !node.name.startsWith('.ink-goose')) {
                     try {
-                        const content = await FileSystemAPI.readFile(node.path);
+                        const content = await this.fileSystem.readFile(node.path);
                         const relativePath = this.getRelativePath(node.path, vaultPath);
                         const contentHash = await this.calculateContentHash(content);
                         const fileMetadata = metadata[relativePath];
@@ -355,7 +355,7 @@ export class SyncService {
             let localVersion = 0;
 
             try {
-                const existsCheck = await FileSystemAPI.readFile(fullPath);
+                const existsCheck = await this.fileSystem.readFile(fullPath);
                 localContent = existsCheck;
                 localVersion = fileMetadata?.version || 1;
 
@@ -382,10 +382,10 @@ export class SyncService {
                 const pathParts = relativePath.split('/');
                 if (pathParts.length > 1) {
                     const dirPath = `${vaultPath}/${pathParts.slice(0, -1).join('/')}`;
-                    await FileSystemAPI.ensureDirectory(dirPath);
+                    await this.fileSystem.ensureDirectory(dirPath);
                 }
 
-                await FileSystemAPI.writeFile(fullPath, resolution.content);
+                await this.fileSystem.writeFile(fullPath, resolution.content);
 
                 const contentHash = CryptoService.generateContentHash(resolution.content);
                 metadata[relativePath] = {
@@ -427,10 +427,10 @@ export class SyncService {
             const pathParts = relativePath.split('/');
             if (pathParts.length > 1) {
                 const dirPath = `${vaultPath}/${pathParts.slice(0, -1).join('/')}`;
-                await FileSystemAPI.ensureDirectory(dirPath);
+                await this.fileSystem.ensureDirectory(dirPath);
             }
 
-            await FileSystemAPI.writeFile(fullPath, content);
+            await this.fileSystem.writeFile(fullPath, content);
 
             metadata[relativePath] = {
                 version: fileVersion.version,

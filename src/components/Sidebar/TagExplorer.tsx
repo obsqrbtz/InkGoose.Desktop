@@ -3,6 +3,8 @@ import { useAppStore } from '../../store/appStore';
 import NoteIcon from '../icons/NoteIcon';
 import { extractTags } from '../../utils/tags';
 import { TagFileRef } from '../../types';
+import { ElectronFileSystem } from '../../adapters/electronfileSystem';
+import { parseMarkdownFile, extractLinks } from '../../../packages/core/utils/markdown';
 
 const TagExplorer: React.FC = () => {
     const { tagsByName, setCurrentFile, addTab } = useAppStore();
@@ -10,10 +12,10 @@ const TagExplorer: React.FC = () => {
 
     const openFile = async (path: string, name: string) => {
         try {
-            const { FileSystemAPI } = await import('../../api/fileSystemAPI');
-            const content = await FileSystemAPI.readFile(path);
-            const { frontMatter, body } = FileSystemAPI.parseMarkdownFile(content);
-            const links = FileSystemAPI.extractLinks(body);
+            const fileSystem = new ElectronFileSystem();
+            const content = await fileSystem.readFile(path);
+            const { frontMatter, body } = parseMarkdownFile(content);
+            const links = extractLinks(body);
             const tags = extractTags(content);
             const note = {
                 path,
