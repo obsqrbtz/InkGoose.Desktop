@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileNode } from '../../types';
-import { useAppStore } from '../../store/appStore';
+import { FileNode } from '../../../packages/core/types';
+import { useAppStore } from '../../store';
 import FileTree from './FileTree';
 import SearchPanel from './SearchPanel';
 import './Sidebar.css';

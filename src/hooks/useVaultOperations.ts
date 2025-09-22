@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 
 export const useVaultOperations = () => {
     const {

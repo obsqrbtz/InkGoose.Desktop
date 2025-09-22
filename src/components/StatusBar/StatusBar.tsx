@@ -1,6 +1,6 @@
 import React from 'react';
-import { useAppStore } from '../../store/appStore';
-import { FileNode } from '../../types';
+import { useAppStore } from '../../store';
+import { FileNode } from '../../../packages/core/types';
 import { SyncStatus } from '../SyncStatus';
 import './StatusBar.css';
 import FolderIcon from '../icons/FolderIcon';

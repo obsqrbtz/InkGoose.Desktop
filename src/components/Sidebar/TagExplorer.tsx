@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import NoteIcon from '../icons/NoteIcon';
 import { extractTags } from '../../../packages/core/utils/tags';
 import { TagFileRef } from '../../../packages/core/types';

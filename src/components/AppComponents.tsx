@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 import { useToggle } from '../hooks/useCommon';
 import LoadingIcon from './icons/LoadingIcon';
 import UserMenu from './UserMenu/UserMenu';

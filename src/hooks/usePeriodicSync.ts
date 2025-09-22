@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 
 export const usePeriodicSync = () => {
     const { isAuthenticated, isOnline, isSyncing, syncAllVaults } = useAppStore();

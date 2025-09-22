@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import './VaultSelector.css';
 
 interface VaultSelectorProps {

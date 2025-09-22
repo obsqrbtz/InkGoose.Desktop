@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import './SyncStatus.css';
 
 interface SyncStatusProps {

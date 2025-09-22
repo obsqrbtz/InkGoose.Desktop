@@ -12,7 +12,7 @@ import UserMenu from './UserMenu/UserMenu';
 import { ThemeToggle } from './common/ThemeToggle';
 import { useVaultWatcher } from '../hooks/useVaultWatcher';
 import { usePeriodicSync } from '../hooks/usePeriodicSync';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 import { ElectronFileSystem } from '../adapters/electronfileSystem';
 import { config } from '../config/config';
 

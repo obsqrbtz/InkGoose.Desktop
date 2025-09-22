@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import { CryptoService } from '../../../packages/core/services/cryptoService/cryptoService';
 import './AuthModal.css';
 
@@ -48,7 +48,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode = 'optional
             if (isLogin) {
                 await login(formData.email, formData.password);
             } else {
-                const encryptionKeys = CryptoService.generateRegistrationKeys(formData.password);
+                const cryptoService = new CryptoService();
+                const encryptionKeys = cryptoService.generateRegistrationKeys(formData.password);
 
                 const recoveryKeyHex = Array.from(encryptionKeys.recoveryKey)
                     .map(b => b.toString(16).padStart(2, '0'))

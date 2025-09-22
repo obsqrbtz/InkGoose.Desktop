@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 import { config } from '../config/config';
 import { ElectronFileSystem } from '../adapters/electronfileSystem';
 

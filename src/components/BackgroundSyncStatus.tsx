@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 import { SyncService } from '../../packages/core/services/syncService';
 import { electronHttpClient } from '../adapters/electronHttpClient';
 import { SyncAPI } from '../../packages/core/api/syncAPI';

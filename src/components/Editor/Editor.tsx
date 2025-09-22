@@ -6,7 +6,7 @@ import { marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 // eslint-disable-next-line import/no-unresolved
 import hljs from 'highlight.js/lib/common';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import './Editor.css';
 import EyeIcon from '../icons/EyeIcon';
 import EditIcon from '../icons/EditIcon';

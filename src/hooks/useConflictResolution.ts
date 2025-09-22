@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../store';
 import { useToggle } from './useCommon';
 
 export const useConflictResolution = () => {

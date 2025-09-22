@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileNode } from '../../../packages/core/types';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../../store';
 import { extractTags } from '../../../packages/core/utils/tags';
 import FolderIcon from '../icons/FolderIcon';
 import FolderOpenIcon from '../icons/FolderOpenIcon';
