@@ -14,7 +14,7 @@ import SplitIcon from '../icons/SplitIcon';
 import SaveIcon from '../icons/SaveIcon';
 import WarningIcon from '../icons/WarningIcon';
 import { inkGooseDark, inkGooseLight } from '../../styles/codemirrorTheme';
-import { formatFileSize } from '../../utils/fileUtils';
+import { formatFileSize } from '../../../packages/core/utils/fileUtils';
 import ResizableSplitter from './ResizableSplitter';
 import { useScrollSync } from '../../hooks/useScrollSync';
 import { parseMarkdownFile } from '../../../packages/core/utils/markdown';

@@ -1,5 +1,5 @@
 import { Document } from 'flexsearch';
-import { FileNode, SearchResult } from '../types';
+import { FileNode, SearchResult } from '../../packages/core/types';
 import { ElectronFileSystem } from '../adapters/electronfileSystem';
 
 interface IndexedNote {

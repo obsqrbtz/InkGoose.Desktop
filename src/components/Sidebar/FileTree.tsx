@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { FileNode } from '../../types';
+import { FileNode } from '../../../packages/core/types';
 import { useAppStore } from '../../store/appStore';
-import { extractTags } from '../../utils/tags';
+import { extractTags } from '../../../packages/core/utils/tags';
 import FolderIcon from '../icons/FolderIcon';
 import FolderOpenIcon from '../icons/FolderOpenIcon';
 import FileIcon from '../icons/FileIcon';

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/appStore';
 import NoteIcon from '../icons/NoteIcon';
-import { extractTags } from '../../utils/tags';
-import { TagFileRef } from '../../types';
+import { extractTags } from '../../../packages/core/utils/tags';
+import { TagFileRef } from '../../../packages/core/types';
 import { ElectronFileSystem } from '../../adapters/electronfileSystem';
 import { parseMarkdownFile, extractLinks } from '../../../packages/core/utils/markdown';
 

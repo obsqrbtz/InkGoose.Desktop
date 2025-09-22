@@ -1,5 +1,5 @@
 import React from 'react';
-import { FormFieldProps } from '../../types/ui';
+import { FormFieldProps } from '../../../packages/core/utils/ui';
 import './FormField.css';
 
 export const FormField: React.FC<FormFieldProps> = ({

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TabItem } from '../../types/ui';
+import { TabItem } from '../../../packages/core/utils/ui';
 import './Tabs.css';
 
 interface TabsProps {

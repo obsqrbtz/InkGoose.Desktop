@@ -22,7 +22,7 @@
   },
   "include": [
     "src/**/*"
-, "packages/core/api/authAPI.ts", "packages/core/api/syncAPI.ts", "packages/core/services/conflictResolver.ts", "packages/core/services/syncService.ts", "packages/core/services/cryptoService/cryptoService.ts"  ],
+, "packages/core/api/authAPI.ts", "packages/core/api/syncAPI.ts", "packages/core/services/conflictResolver.ts", "packages/core/services/syncService.ts", "packages/core/services/cryptoService/cryptoService.ts", "packages/core/utils/fileUtils.ts", "packages/core/utils/tags.ts", "packages/core/utils/ui.ts", "packages/core/types/marked-highlight.d.ts"  ],
   "exclude": [
     "node_modules",
     "dist"

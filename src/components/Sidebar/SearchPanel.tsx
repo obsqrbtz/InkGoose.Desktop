@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store/appStore';
-import { SearchResult } from '../../types';
+import { SearchResult } from '../../../packages/core/types';
 import LoadingIcon from '../icons/LoadingIcon';
 import SearchIcon from '../icons/SearchIcon';
 import { ElectronFileSystem } from '../../adapters/electronfileSystem';

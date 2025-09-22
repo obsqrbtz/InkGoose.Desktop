@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseModalProps } from '../../types/ui';
+import { BaseModalProps } from '../../../packages/core/utils/ui';
 import './BaseModal.css';
 
 export const BaseModal: React.FC<BaseModalProps> = ({

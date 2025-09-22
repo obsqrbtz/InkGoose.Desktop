@@ -1,6 +1,6 @@
 import { SyncAPI, SyncAction, FileSyncInfo } from '../api/syncAPI';
 import { FileSystemAPI } from '../api/fileSystemAPI';
-import { FileNode, LocalFileInfo, SyncConflict } from '../../../src/types';
+import { FileNode, LocalFileInfo, SyncConflict } from '../../../packages/core/types';
 import { ConflictResolver } from './conflictResolver';
 import { CryptoService } from './cryptoService/cryptoService';
 

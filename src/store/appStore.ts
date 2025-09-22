@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { FileNode, Note, AppSettings, SearchResult, TagsByName, NoteTagsMap, TagFileRef, SyncConflict } from '../types';
+import { FileNode, Note, AppSettings, SearchResult, TagsByName, NoteTagsMap, TagFileRef, SyncConflict } from '../../packages/core/types';
 import { resolveTheme } from '../utils/theme';
 import { AuthAPI, User, KdfParams } from '../../packages/core/api/authAPI';
 import { SyncAPI, VaultSummary, CreateVaultResponse } from '../../packages/core/api/syncAPI';
 import { SyncService } from '../../packages/core/services/syncService';
-import { extractTags } from '../utils/tags';
+import { extractTags } from '../../packages/core/utils/tags';
 import { searchService } from '../utils/searchService';
 import { config } from '../config/config';
 import { electronHttpClient } from '../adapters/electronHttpClient';
