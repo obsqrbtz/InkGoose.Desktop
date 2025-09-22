@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import started from 'electron-squirrel-startup';
-import { FileNode } from './types';
+import { FileNode } from '../packages/core/types';
 import chokidar, { FSWatcher } from 'chokidar';
 import { config } from './config/config';
 
