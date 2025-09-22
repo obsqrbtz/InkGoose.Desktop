@@ -1,5 +1,5 @@
 import { SyncAPI, UploadFileRequest, UploadResponse, VersionConflictInfo, ConflictResolutionChoice, FileVersionDto } from '../api/syncAPI';
-import { CryptoService } from '../../../src/services/cryptoService';
+import { CryptoService } from './cryptoService/cryptoService';
 
 export interface ConflictInfo {
     relativePath: string;
@@ -19,7 +19,7 @@ export interface ConflictDialog {
 }
 
 export class ConflictResolver {
-    constructor(private sync: SyncAPI, private dialog: ConflictDialog) {}
+    constructor(private sync: SyncAPI, private dialog: ConflictDialog, private cryptoService: CryptoService) {}
     async handleUploadConflict(
         vaultId: string,
         uploadRequest: UploadFileRequest,
@@ -99,7 +99,7 @@ export class ConflictResolver {
     ): Promise<{ content: string; encryptedContent: string; shouldUpload: boolean; uploadRequest?: UploadFileRequest }> {
         switch (choice.type) {
             case 'keep-local': {
-                const localHash = CryptoService.generateContentHash(localContent);
+                const localHash = this.cryptoService.generateContentHash(localContent);
                 const { encryptedContent: localEncrypted, encryptedFileKey: localKey } =
                     await this.encryptContent(localContent);
 
@@ -129,7 +129,7 @@ export class ConflictResolver {
                     throw new Error('Merged content is required for merge resolution');
                 }
 
-                const mergedHash = CryptoService.generateContentHash(choice.mergedContent);
+                const mergedHash = this.cryptoService.generateContentHash(choice.mergedContent);
                 const { encryptedContent: mergedEncrypted, encryptedFileKey: mergedKey } =
                     await this.encryptContent(choice.mergedContent);
 
@@ -181,7 +181,7 @@ export class ConflictResolver {
                 }
 
                 const { encryptedContent, encryptedFileKey } = await this.encryptContent(choice.mergedContent);
-                const mergedHash = CryptoService.generateContentHash(choice.mergedContent);
+                const mergedHash = this.cryptoService.generateContentHash(choice.mergedContent);
 
                 return await this.sync.forceUploadFile(vaultId, {
                     ...uploadRequest,
@@ -224,7 +224,7 @@ export class ConflictResolver {
 
     private async decryptContent(encryptedContent: string, encryptedFileKey: string): Promise<string> {
         try {
-            return CryptoService.prepareDownloadedFile(encryptedContent, encryptedFileKey);
+            return this.cryptoService.prepareDownloadedFile(encryptedContent, encryptedFileKey);
         } catch (error) {
             throw new Error(`Failed to decrypt content: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -232,7 +232,7 @@ export class ConflictResolver {
 
     private async encryptContent(content: string): Promise<{ encryptedContent: string; encryptedFileKey: string }> {
         try {
-            return CryptoService.prepareFileForUpload(content);
+            return this.cryptoService.prepareFileForUpload(content);
         } catch (error) {
             throw new Error(`Failed to encrypt content: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }

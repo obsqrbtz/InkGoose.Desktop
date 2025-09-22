@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../../store/appStore';
-import { CryptoService } from '../../services/cryptoService';
+import { CryptoService } from '../../../packages/core/services/cryptoService/cryptoService';
 import './AuthModal.css';
 
 interface AuthModalProps {

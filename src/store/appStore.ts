@@ -4,7 +4,6 @@ import { resolveTheme } from '../utils/theme';
 import { AuthAPI, User, KdfParams } from '../../packages/core/api/authAPI';
 import { SyncAPI, VaultSummary, CreateVaultResponse } from '../../packages/core/api/syncAPI';
 import { SyncService } from '../../packages/core/services/syncService';
-import { CryptoService } from '../services/cryptoService';
 import { extractTags } from '../utils/tags';
 import { searchService } from '../utils/searchService';
 import { config } from '../config/config';
@@ -12,13 +11,14 @@ import { electronHttpClient } from '../adapters/electronHttpClient';
 import { ElectronConflictDialog } from '../components/ConflictResolutionModal/conflictDialog';
 import { ConflictResolver } from '../../packages/core/services/conflictResolver';
 import { ElectronFileSystem } from '../adapters/electronfileSystem';
+import { CryptoService } from '../../packages/core/services/cryptoService/cryptoService';
 
 const http = electronHttpClient;
+const cryptoService = new CryptoService();
 const syncAPI = new SyncAPI(http);
-const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
-
+const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog(), cryptoService);
 const fileSystem = new ElectronFileSystem();
-const syncService = new SyncService(syncAPI, conflictResolver, fileSystem);
+const syncService = new SyncService(syncAPI, conflictResolver, fileSystem, cryptoService);
 
 interface AppState {
   // Vault and files
@@ -160,10 +160,10 @@ const withVault = <T>(fn: () => Promise<T> | T): Promise<T> | T | undefined => {
 };
 
 const storeMasterKeySecurely = async (userId: string) => {
-  const masterKey = CryptoService.getMasterKey();
+  const masterKey = cryptoService.getMasterKey();
   if (masterKey) {
     try {
-      await CryptoService.storeMasterKeySecurely(userId, masterKey);
+      await cryptoService.storeMasterKeySecurely(userId, masterKey);
     } catch (error) {
       console.warn('Failed to store master key securely:', error);
     }
@@ -185,7 +185,7 @@ const ensureUserDirectories = async (username: string) => {
 
 const syncOperationsAvailable = () => {
   const state = useAppStore.getState();
-  return state.user && state.isAuthenticated && CryptoService.getMasterKey();
+  return state.user && state.isAuthenticated && cryptoService.getMasterKey();
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -439,7 +439,7 @@ export const useAppStore = create<AppState>((set) => ({
   login: async (email, password) => {
     try {
       const response = await AuthAPI.login({ email, password });
-      CryptoService.decryptMasterKey(password, response.encMasterKey_pw, response.kdfParams);
+      cryptoService.decryptMasterKey(password, response.encMasterKey_pw, response.kdfParams);
 
       const user = AuthAPI.getCurrentUser();
       set({ user, isAuthenticated: true });
@@ -466,7 +466,7 @@ export const useAppStore = create<AppState>((set) => ({
       });
 
       await AuthAPI.login({ email, password });
-      CryptoService.decryptMasterKey(password, encMasterKey_pw, kdfParams);
+      cryptoService.decryptMasterKey(password, encMasterKey_pw, kdfParams);
 
       const user = AuthAPI.getCurrentUser();
       set({ user, isAuthenticated: true });
@@ -488,11 +488,11 @@ export const useAppStore = create<AppState>((set) => ({
     } catch (error) {
       console.warn('Logout API call failed:', error);
     } finally {
-      CryptoService.clearMasterKey();
+      cryptoService.clearMasterKey();
 
       if (user) {
         try {
-          await CryptoService.deleteMasterKeySecurely(user.id.toString());
+          await cryptoService.deleteMasterKeySecurely(user.id.toString());
         } catch (error) {
           console.warn('Failed to clear secure storage:', error);
         }
@@ -528,9 +528,9 @@ export const useAppStore = create<AppState>((set) => ({
       set({ user, isAuthenticated: true });
 
       try {
-        const storedMasterKey = await CryptoService.retrieveMasterKeySecurely(user.id.toString());
+        const storedMasterKey = await cryptoService.retrieveMasterKeySecurely(user.id.toString());
         if (storedMasterKey) {
-          CryptoService.setMasterKey(storedMasterKey);
+          cryptoService.setMasterKey(storedMasterKey);
           await useAppStore.getState().initializeUserVaults();
         } else {
           console.log('No stored master key found');
@@ -569,7 +569,7 @@ export const useAppStore = create<AppState>((set) => ({
         password
       });
 
-      CryptoService.decryptMasterKey(
+      cryptoService.decryptMasterKey(
         password,
         loginResponse.encMasterKey_pw,
         loginResponse.kdfParams
@@ -721,7 +721,7 @@ export const useAppStore = create<AppState>((set) => ({
       return;
     }
 
-    if (!CryptoService.getMasterKey()) {
+    if (!cryptoService.getMasterKey()) {
       console.warn('Cannot sync vaults: encryption not available. User needs to log in with password.');
       return;
     }
@@ -779,7 +779,7 @@ export const useAppStore = create<AppState>((set) => ({
       return;
     }
 
-    if (!CryptoService.getMasterKey()) {
+    if (!cryptoService.getMasterKey()) {
       console.warn('Cannot sync vault: encryption not available. User needs to log in with password.');
       return;
     }

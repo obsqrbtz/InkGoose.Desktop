@@ -6,6 +6,7 @@ import { SyncAPI } from '../../packages/core/api/syncAPI';
 import { ElectronConflictDialog } from './ConflictResolutionModal/conflictDialog';
 import { ConflictResolver } from '../../packages/core/services/conflictResolver';
 import { ElectronFileSystem } from '../adapters/electronfileSystem';
+import { CryptoService } from '../../packages/core/services/cryptoService/cryptoService';
 
 interface BackgroundSyncStatusProps {
   className?: string;
@@ -19,9 +20,10 @@ export const BackgroundSyncStatus: React.FC<BackgroundSyncStatusProps> = ({ clas
 
   const http = electronHttpClient;
   const syncAPI = new SyncAPI(http);
-  const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
+    const cryptoService = new CryptoService();
+  const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog(), cryptoService);
   const fileSystem = new ElectronFileSystem();
-  const syncService = new SyncService(syncAPI, conflictResolver, fileSystem);
+  const syncService = new SyncService(syncAPI, conflictResolver, fileSystem, cryptoService);
 
 
   

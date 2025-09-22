@@ -1,8 +1,8 @@
 import { SyncAPI, SyncAction, FileSyncInfo } from '../api/syncAPI';
 import { FileSystemAPI } from '../api/fileSystemAPI';
 import { FileNode, LocalFileInfo, SyncConflict } from '../../../src/types';
-import { CryptoService } from '../../../src/services/cryptoService';
 import { ConflictResolver } from './conflictResolver';
+import { CryptoService } from './cryptoService/cryptoService';
 
 interface QueuedOperation {
     id: string;
@@ -24,7 +24,7 @@ interface SyncProgress {
 }
 
 export class SyncService {
-    constructor(private sync: SyncAPI, private conflictResolver: ConflictResolver, private fileSystem: FileSystemAPI) { }
+    constructor(private sync: SyncAPI, private conflictResolver: ConflictResolver, private fileSystem: FileSystemAPI, private cryptoService: CryptoService) { }
     private readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';
     private readonly MAX_CONCURRENT_OPERATIONS = 5;
     private readonly MAX_RETRIES = 3;
@@ -36,7 +36,7 @@ export class SyncService {
     private syncProgress = new Map<string, SyncProgress>();
 
     private async calculateContentHash(content: string): Promise<string> {
-        return CryptoService.generateContentHash(content);
+        return this.cryptoService.generateContentHash(content);
     }
 
     private getRelativePath(fullPath: string, vaultPath: string): string {
@@ -286,11 +286,11 @@ export class SyncService {
 
     async uploadFile(vaultId: string, vaultPath: string, localFile: LocalFileInfo): Promise<void> {
         try {
-            if (!CryptoService.getMasterKey()) {
+            if (!this.cryptoService.getMasterKey()) {
                 throw new Error('Encryption not available. Please log in to upload files.');
             }
 
-            const { encryptedContent, encryptedFileKey } = CryptoService.prepareFileForUpload(localFile.content);
+            const { encryptedContent, encryptedFileKey } = this.cryptoService.prepareFileForUpload(localFile.content);
 
             const metadata = await this.readSyncMetadata(vaultPath);
             const currentMetadata = metadata[localFile.relativePath];
@@ -387,7 +387,7 @@ export class SyncService {
 
                 await this.fileSystem.writeFile(fullPath, resolution.content);
 
-                const contentHash = CryptoService.generateContentHash(resolution.content);
+                const contentHash = this.cryptoService.generateContentHash(resolution.content);
                 metadata[relativePath] = {
                     version: version || 1,
                     hash: contentHash,
@@ -418,11 +418,11 @@ export class SyncService {
 
             const fileVersion = await this.sync.downloadFile(vaultId, fileId, version);
 
-            if (!CryptoService.getMasterKey()) {
+            if (!this.cryptoService.getMasterKey()) {
                 throw new Error('Encryption not available. Please log in to download files.');
             }
 
-            const content = CryptoService.prepareDownloadedFile(fileVersion.encryptedContent, fileVersion.encryptedFileKey);
+            const content = this.cryptoService.prepareDownloadedFile(fileVersion.encryptedContent, fileVersion.encryptedFileKey);
 
             const pathParts = relativePath.split('/');
             if (pathParts.length > 1) {
