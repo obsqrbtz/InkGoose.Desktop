@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useAppStore } from '../store/appStore';
-import { KdfParams } from '../api/authAPI';
+import { KdfParams } from '../../packages/core/api/authAPI';
 
 export const useAuth = () => {
     const {

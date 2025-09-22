@@ -1,8 +1,9 @@
-import { SyncAPI, SyncAction, FileSyncInfo } from '../api/syncAPI';
+import { SyncAPI, SyncAction, FileSyncInfo } from '../../packages/core/api/syncAPI';
 import { FileSystemAPI } from '../api/fileSystemAPI';
 import { FileNode, LocalFileInfo, SyncConflict } from '../types';
 import { CryptoService } from './cryptoService';
 import { ConflictResolver } from './conflictResolver';
+import { electronHttpClient } from '../adapters/electronHttpClient';
 
 interface QueuedOperation {
     id: string;
@@ -22,6 +23,8 @@ interface SyncProgress {
     inProgress: number;
     status: string;
 }
+
+SyncAPI.configure(electronHttpClient);
 
 export class SyncService {
     private static readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';

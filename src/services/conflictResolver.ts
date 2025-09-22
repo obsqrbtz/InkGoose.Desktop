@@ -1,4 +1,4 @@
-import { SyncAPI, UploadFileRequest, UploadResponse, VersionConflictInfo, ConflictResolutionChoice, FileVersionDto } from '../api/syncAPI';
+import { SyncAPI, UploadFileRequest, UploadResponse, VersionConflictInfo, ConflictResolutionChoice, FileVersionDto } from '../../packages/core/api/syncAPI';
 import { CryptoService } from './cryptoService';
 
 export interface ConflictInfo {

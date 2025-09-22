@@ -1,5 +1,6 @@
-import { config } from '../config/config';
+import { config } from '../../../src/config/config';
 import { AuthAPI } from './authAPI';
+import { HttpClient, Logger } from "../platform/platform";
 
 export interface FileSyncInfo {
     relativePath: string;
@@ -164,27 +165,31 @@ const handleError = (url: string, status: number, text: string) => {
 };
 
 export class SyncAPI {
+    private static http: HttpClient;
+    private static logger: Logger = console;
+
+    static configure(http: HttpClient, logger: Logger = console) {
+        this.http = http;
+        this.logger = logger;
+    }
+
     private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        if (!this.http) {
+            throw new Error("SyncAPI not configured. Call SyncAPI.configure() first.");
+        }
         const url = `${config.apiBaseUrl}${endpoint}`;
         const token = AuthAPI.getAccessToken();
 
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                ...options.headers,
-            },
+        const response = await this.http.request<T>(url, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+            ...options.headers,
+        },
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            handleError(url, response.status, errorText);
-        }
-
-        const text = await response.text();
-        const result = text ? JSON.parse(text) : ({} as T);
-        return result;
+        return response;
     }
 
     // Vault operations
@@ -246,17 +251,11 @@ export class SyncAPI {
         this.request<FileVersionSummary[]>(`/sync/${vaultId}/files/${fileId}/history`);
 
     static async downloadFileContent(url: string): Promise<string> {
-        if (window.electronAPI && window.electronAPI.downloadFileContent) {
-            return await window.electronAPI.downloadFileContent(url);
-        }
-        return "";
+        return await this.http.download(url); 
     }
     
     static async uploadFileContent(url: string, content: string): Promise<boolean> {
-        if (window.electronAPI && window.electronAPI.uploadFileContent) {
-            return await window.electronAPI.uploadFileContent(url, content);
-        }
-        return false;
+        return await this.http.upload(url, content);
     }
 
     static async batchDownloadFiles(downloads: Array<{ vaultId: string; fileId: string; version?: number }>): Promise<Array<{ fileId: string; content: string; error?: string }>> {
@@ -265,7 +264,7 @@ export class SyncAPI {
                 const result = await this.downloadFile(vaultId, fileId, version);
                 return { fileId, content: result.encryptedContent };
             } catch (error) {
-                return { fileId, content: '', error: String(error) };
+                return { fileId, content: '', error: error instanceof Error ? error.message : String(error) };
             }
         });
         return Promise.all(promises);

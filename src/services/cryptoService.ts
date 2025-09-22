@@ -1,5 +1,5 @@
 import { AES, enc, PBKDF2 } from 'crypto-js';
-import { KdfParams } from '../api/authAPI';
+import { KdfParams } from '../../packages/core/api/authAPI';
 
 export interface EncryptionKeys {
     masterKey: Uint8Array;

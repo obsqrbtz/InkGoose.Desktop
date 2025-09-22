@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ConflictResolutionChoice } from '../../api/syncAPI';
+import { ConflictResolutionChoice } from '../../../packages/core/api/syncAPI';
 import './ConflictResolutionModal.css';
 
 interface ConflictDialogData {

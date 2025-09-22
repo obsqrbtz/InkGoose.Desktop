@@ -1,4 +1,4 @@
-import { config } from '../config/config';
+import { config } from '../../../src/config/config';
 
 export interface LoginRequest {
     email: string;
