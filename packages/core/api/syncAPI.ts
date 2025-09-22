@@ -165,15 +165,9 @@ const handleError = (url: string, status: number, text: string) => {
 };
 
 export class SyncAPI {
-    private static http: HttpClient;
-    private static logger: Logger = console;
+    constructor(private http: HttpClient, private logger: Logger = console) {}
 
-    static configure(http: HttpClient, logger: Logger = console) {
-        this.http = http;
-        this.logger = logger;
-    }
-
-    private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
         if (!this.http) {
             throw new Error("SyncAPI not configured. Call SyncAPI.configure() first.");
         }
@@ -193,29 +187,29 @@ export class SyncAPI {
     }
 
     // Vault operations
-    static getUserVaults = () => this.request<VaultSummary[]>('/vault');
+    getUserVaults = () => this.request<VaultSummary[]>('/vault');
 
-    static createVault = (data: CreateVaultRequest) =>
+    createVault = (data: CreateVaultRequest) =>
         this.request<CreateVaultResponse>('/vault', createRequest('POST', data));
 
-    static getVault = (vaultId: string) =>
+    getVault = (vaultId: string) =>
         this.request<VaultDetails>(`/vault/${vaultId}`);
 
     // Collaborator operations
-    static addCollaborator = (vaultId: string, data: AddCollaboratorRequest) =>
+    addCollaborator = (vaultId: string, data: AddCollaboratorRequest) =>
         this.request<void>(`/vault/${vaultId}/collaborators`, createRequest('POST', data));
 
-    static removeCollaborator = (vaultId: string, userId: string) =>
+    removeCollaborator = (vaultId: string, userId: string) =>
         this.request<void>(`/vault/${vaultId}/collaborators/${userId}`, createRequest('DELETE'));
 
-    static updatePermission = (vaultId: string, userId: string, data: UpdatePermissionRequest) =>
+    updatePermission = (vaultId: string, userId: string, data: UpdatePermissionRequest) =>
         this.request<void>(`/vault/${vaultId}/collaborators/${userId}/permission`, createRequest('PUT', data));
 
     // Sync operations
-    static checkSync = (vaultId: string, data: SyncCheckRequest) =>
+    checkSync = (vaultId: string, data: SyncCheckRequest) =>
         this.request<SyncCheckResponse>(`/sync/${vaultId}/check`, createRequest('POST', data));
 
-    static uploadFile = async (vaultId: string, data: UploadFileRequest, encryptedContent: string) => {
+    uploadFile = async (vaultId: string, data: UploadFileRequest, encryptedContent: string) => {
         const uploadResponse = await this.request<UploadResponse>(`/sync/${vaultId}/upload`, createRequest('POST', data));
         const contentUploaded = await this.uploadFileContent(uploadResponse.uploadUrl, encryptedContent);
         if (!contentUploaded) {
@@ -224,7 +218,7 @@ export class SyncAPI {
         return uploadResponse;
     };
 
-    static forceUploadFile = async (vaultId: string, data: UploadFileRequest, encryptedContent: string) => {
+    forceUploadFile = async (vaultId: string, data: UploadFileRequest, encryptedContent: string) => {
         const uploadResponse = await this.request<UploadResponse>(`/sync/${vaultId}/upload`, createRequest('POST', { ...data, force: true }));
         const contentUploaded = await this.uploadFileContent(uploadResponse.uploadUrl, encryptedContent);
         if (!contentUploaded) {
@@ -233,32 +227,32 @@ export class SyncAPI {
         return uploadResponse;
     };
 
-    static downloadFile = async (vaultId: string, fileId: string, version?: number) => {
+    downloadFile = async (vaultId: string, fileId: string, version?: number) => {
         const versionParam = version ? `?version=${version}` : '';
         const fileVersion = await this.request<FileVersionDto>(`/sync/${vaultId}/download/${fileId}${versionParam}`);
         const content = await this.downloadFileContent(fileVersion.url);
         return { ...fileVersion, encryptedContent: content };
     };
 
-    static downloadFileByPath = async (vaultId: string, relativePath: string, version?: number) => {
+    downloadFileByPath = async (vaultId: string, relativePath: string, version?: number) => {
         const versionParam = version ? `?version=${version}` : '';
         const fileVersion = await this.request<FileVersionDto>(`/sync/${vaultId}/download-by-path/${encodeURIComponent(relativePath)}${versionParam}`);
         const content = await this.downloadFileContent(fileVersion.url);
         return { ...fileVersion, encryptedContent: content };
     };
 
-    static getFileHistory = (vaultId: string, fileId: string) =>
+    getFileHistory = (vaultId: string, fileId: string) =>
         this.request<FileVersionSummary[]>(`/sync/${vaultId}/files/${fileId}/history`);
 
-    static async downloadFileContent(url: string): Promise<string> {
+    async downloadFileContent(url: string): Promise<string> {
         return await this.http.download(url); 
     }
     
-    static async uploadFileContent(url: string, content: string): Promise<boolean> {
+    async uploadFileContent(url: string, content: string): Promise<boolean> {
         return await this.http.upload(url, content);
     }
 
-    static async batchDownloadFiles(downloads: Array<{ vaultId: string; fileId: string; version?: number }>): Promise<Array<{ fileId: string; content: string; error?: string }>> {
+    async batchDownloadFiles(downloads: Array<{ vaultId: string; fileId: string; version?: number }>): Promise<Array<{ fileId: string; content: string; error?: string }>> {
         const promises = downloads.map(async ({ vaultId, fileId, version }) => {
             try {
                 const result = await this.downloadFile(vaultId, fileId, version);

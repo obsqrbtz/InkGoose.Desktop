@@ -24,7 +24,7 @@ interface SyncProgress {
     status: string;
 }
 
-SyncAPI.configure(electronHttpClient);
+const sync = new SyncAPI(electronHttpClient);
 
 export class SyncService {
     private static readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';
@@ -257,7 +257,7 @@ export class SyncService {
                 contentHash: file.contentHash,
             }));
 
-            const response = await SyncAPI.checkSync(vaultId, { files: syncRequest });
+            const response = await sync.checkSync(vaultId, { files: syncRequest });
 
             const actions = response.actions.map((action) => {
                 const localFile = localFiles.find(f => f.relativePath === action.relativePath);
@@ -306,7 +306,7 @@ export class SyncService {
                 contentHash: localFile.contentHash,
             };
 
-            const response = await SyncAPI.uploadFile(vaultId, uploadRequest, encryptedContent);
+            const response = await sync.uploadFile(vaultId, uploadRequest, encryptedContent);
 
             if (response.success) {
                 const updatedMetadata = await this.readSyncMetadata(vaultPath);
@@ -405,7 +405,7 @@ export class SyncService {
                     };
 
                     try {
-                        const uploadResponse = await SyncAPI.forceUploadFile(vaultId, uploadRequest, resolution.encryptedContent);
+                        const uploadResponse = await sync.forceUploadFile(vaultId, uploadRequest, resolution.encryptedContent);
                         if (uploadResponse.success) {
                             metadata[relativePath].version = uploadResponse.version;
                             await this.writeSyncMetadata(vaultPath, metadata);
@@ -418,7 +418,7 @@ export class SyncService {
                 return;
             }
 
-            const fileVersion = await SyncAPI.downloadFile(vaultId, fileId, version);
+            const fileVersion = await sync.downloadFile(vaultId, fileId, version);
 
             if (!CryptoService.getMasterKey()) {
                 throw new Error('Encryption not available. Please log in to download files.');
