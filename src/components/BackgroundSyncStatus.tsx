@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { SyncService } from '../services/syncService';
+import { electronHttpClient } from '../adapters/electronHttpClient';
+import { SyncAPI } from '../../packages/core/api/syncAPI';
+import { ElectronConflictDialog } from './ConflictResolutionModal/conflictDialog';
+import { ConflictResolver } from '../../packages/core/services/conflictResolver';
 
 interface BackgroundSyncStatusProps {
   className?: string;
@@ -12,11 +16,18 @@ export const BackgroundSyncStatus: React.FC<BackgroundSyncStatusProps> = ({ clas
   const [syncProgress, setSyncProgress] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
 
+  const http = electronHttpClient;
+  const syncAPI = new SyncAPI(http);
+  const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
+  const syncService = new SyncService(syncAPI, conflictResolver);
+
+
+  
   useEffect(() => {
     if (!currentVaultId) return;
 
     // Set up progress monitoring
-    SyncService.onSyncProgress(currentVaultId, (progress) => {
+    syncService.onSyncProgress(currentVaultId, (progress) => {
       setSyncProgress(progress);
       
       // Hide component when sync is completed
@@ -43,7 +54,7 @@ export const BackgroundSyncStatus: React.FC<BackgroundSyncStatusProps> = ({ clas
 
     return () => {
       clearInterval(interval);
-      SyncService.offSyncProgress(currentVaultId);
+      syncService.offSyncProgress(currentVaultId);
     };
   }, [currentVaultId, getSyncQueueStatus]);
 

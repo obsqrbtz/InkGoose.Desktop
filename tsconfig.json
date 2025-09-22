@@ -22,7 +22,7 @@
   },
   "include": [
     "src/**/*"
-, "packages/core/api/authAPI.ts", "packages/core/api/syncAPI.ts"  ],
+, "packages/core/api/authAPI.ts", "packages/core/api/syncAPI.ts", "packages/core/services/conflictResolver.ts"  ],
   "exclude": [
     "node_modules",
     "dist"

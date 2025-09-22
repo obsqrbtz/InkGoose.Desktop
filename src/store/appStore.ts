@@ -9,6 +9,14 @@ import { CryptoService } from '../services/cryptoService';
 import { extractTags } from '../utils/tags';
 import { searchService } from '../utils/searchService';
 import { config } from '../config/config';
+import { electronHttpClient } from '../adapters/electronHttpClient';
+import { ElectronConflictDialog } from '../components/ConflictResolutionModal/conflictDialog';
+import { ConflictResolver } from '../../packages/core/services/conflictResolver';
+
+const http = electronHttpClient;
+const syncAPI = new SyncAPI(http);
+const conflictResolver = new ConflictResolver(syncAPI, new ElectronConflictDialog());
+const syncService = new SyncService(syncAPI, conflictResolver);
 
 interface AppState {
   // Vault and files
@@ -179,6 +187,7 @@ const syncOperationsAvailable = () => {
 };
 
 export const useAppStore = create<AppState>((set) => ({
+
   // Initial state
   vault: null,
   files: [],
@@ -597,7 +606,7 @@ export const useAppStore = create<AppState>((set) => ({
     });
   }, loadVaults: async () => {
     try {
-      const vaults = await SyncAPI.getUserVaults();
+      const vaults = await syncAPI.getUserVaults();
       set({ availableVaults: vaults });
     } catch (error) {
       handleAsyncError('Load vaults')(error);
@@ -624,7 +633,7 @@ export const useAppStore = create<AppState>((set) => ({
     }
 
     try {
-      const newVault = await SyncAPI.createVault({ name, description });
+      const newVault = await syncAPI.createVault({ name, description });
       const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, name);
       await FileSystemAPI.ensureDirectory(vaultPath);
 
@@ -776,7 +785,7 @@ export const useAppStore = create<AppState>((set) => ({
     try {
       set({ isSyncing: true, syncProgress: { message: 'Starting background sync...', progress: 0 } });
 
-      await SyncService.performBackgroundSync(
+      await syncService.performBackgroundSync(
         state.currentVaultId,
         state.vault,
         state.files,
@@ -835,7 +844,7 @@ export const useAppStore = create<AppState>((set) => ({
         throw new Error('Source path is not a directory');
       }
 
-      const newVault = await SyncAPI.createVault({ name: vaultName, description: `Imported from ${currentFolderPath}` });
+      const newVault = await syncAPI.createVault({ name: vaultName, description: `Imported from ${currentFolderPath}` });
       const vaultPath = await FileSystemAPI.getVaultPath(state.user.username, vaultName);
       await FileSystemAPI.ensureDirectory(vaultPath);
 
@@ -860,7 +869,7 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   getSyncQueueStatus: () => {
-    return SyncService.getQueueStatus();
+    return syncService.getQueueStatus();
   },
 
   openLocalVault: async (vaultName: string) => {

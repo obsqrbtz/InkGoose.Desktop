@@ -2,8 +2,7 @@ import { SyncAPI, SyncAction, FileSyncInfo } from '../../packages/core/api/syncA
 import { FileSystemAPI } from '../api/fileSystemAPI';
 import { FileNode, LocalFileInfo, SyncConflict } from '../types';
 import { CryptoService } from './cryptoService';
-import { ConflictResolver } from './conflictResolver';
-import { electronHttpClient } from '../adapters/electronHttpClient';
+import { ConflictResolver } from '../../packages/core/services/conflictResolver';
 
 interface QueuedOperation {
     id: string;
@@ -24,31 +23,30 @@ interface SyncProgress {
     status: string;
 }
 
-const sync = new SyncAPI(electronHttpClient);
-
 export class SyncService {
-    private static readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';
-    private static readonly MAX_CONCURRENT_OPERATIONS = 5;
-    private static readonly MAX_RETRIES = 3;
-    
-    private static operationQueue: QueuedOperation[] = [];
-    private static activeOperations = new Set<string>();
-    private static isProcessingQueue = false;
-    private static progressCallbacks = new Map<string, (progress: SyncProgress) => void>();
-    private static syncProgress = new Map<string, SyncProgress>();
+    constructor(private sync: SyncAPI, private conflictResolver: ConflictResolver) { }
+    private readonly SYNC_METADATA_FILE = '.ink-goose-sync.json';
+    private readonly MAX_CONCURRENT_OPERATIONS = 5;
+    private readonly MAX_RETRIES = 3;
 
-    private static async calculateContentHash(content: string): Promise<string> {
+    private operationQueue: QueuedOperation[] = [];
+    private activeOperations = new Set<string>();
+    private isProcessingQueue = false;
+    private progressCallbacks = new Map<string, (progress: SyncProgress) => void>();
+    private syncProgress = new Map<string, SyncProgress>();
+
+    private async calculateContentHash(content: string): Promise<string> {
         return CryptoService.generateContentHash(content);
     }
 
-    private static getRelativePath(fullPath: string, vaultPath: string): string {
+    private getRelativePath(fullPath: string, vaultPath: string): string {
         if (fullPath.startsWith(vaultPath)) {
             return fullPath.substring(vaultPath.length + 1).replace(/\\/g, '/');
         }
         return fullPath.replace(/\\/g, '/');
     }
 
-    private static async readSyncMetadata(vaultPath: string): Promise<Record<string, { version: number; hash: string; lastSynced: string }>> {
+    private async readSyncMetadata(vaultPath: string): Promise<Record<string, { version: number; hash: string; lastSynced: string }>> {
         try {
             const metadataPath = `${vaultPath}/${this.SYNC_METADATA_FILE}`;
             const content = await FileSystemAPI.readFile(metadataPath);
@@ -66,7 +64,7 @@ export class SyncService {
         }
     }
 
-    private static async writeSyncMetadata(vaultPath: string, metadata: Record<string, { version: number; hash: string; lastSynced: string }>): Promise<void> {
+    private async writeSyncMetadata(vaultPath: string, metadata: Record<string, { version: number; hash: string; lastSynced: string }>): Promise<void> {
         try {
             const metadataPath = `${vaultPath}/${this.SYNC_METADATA_FILE}`;
             await FileSystemAPI.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
@@ -76,11 +74,11 @@ export class SyncService {
         }
     }
 
-    private static generateOperationId(): string {
+    private generateOperationId(): string {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     }
 
-    private static updateProgress(vaultId: string, update: Partial<SyncProgress>): void {
+    private updateProgress(vaultId: string, update: Partial<SyncProgress>): void {
         const current = this.syncProgress.get(vaultId) || {
             total: 0,
             completed: 0,
@@ -88,24 +86,24 @@ export class SyncService {
             inProgress: 0,
             status: 'idle'
         };
-        
+
         const updated = { ...current, ...update };
         this.syncProgress.set(vaultId, updated);
-        
+
         const callback = this.progressCallbacks.get(vaultId);
         if (callback) {
             callback(updated);
         }
     }
 
-    private static async processQueue(): Promise<void> {
+    private async processQueue(): Promise<void> {
         if (this.isProcessingQueue) return;
         this.isProcessingQueue = true;
 
         try {
-            while (this.operationQueue.length > 0 && this.activeOperations.size < this.MAX_CONCURRENT_OPERATIONS) {                                            
+            while (this.operationQueue.length > 0 && this.activeOperations.size < this.MAX_CONCURRENT_OPERATIONS) {
                 this.operationQueue.sort((a, b) => b.priority - a.priority);
-                
+
                 const operation = this.operationQueue.shift();
                 if (!operation) break;
 
@@ -125,7 +123,7 @@ export class SyncService {
         }
     }
 
-    private static async processOperation(operation: QueuedOperation): Promise<void> {
+    private async processOperation(operation: QueuedOperation): Promise<void> {
         try {
             if (operation.type === 'upload') {
                 await this.uploadFile(operation.vaultId, operation.vaultPath, operation.data);
@@ -144,11 +142,11 @@ export class SyncService {
             if (progress) {
                 const newCompleted = progress.completed + 1;
                 const newInProgress = this.activeOperations.size;
-                
-                const isComplete = newCompleted + progress.failed >= progress.total && 
-                                 newInProgress === 0 && 
-                                 this.operationQueue.length === 0;
-                
+
+                const isComplete = newCompleted + progress.failed >= progress.total &&
+                    newInProgress === 0 &&
+                    this.operationQueue.length === 0;
+
                 this.updateProgress(operation.vaultId, {
                     completed: newCompleted,
                     inProgress: newInProgress,
@@ -157,7 +155,7 @@ export class SyncService {
             }
         } catch (error) {
             console.error(`Operation ${operation.id} failed:`, error);
-            
+
             if (operation.retries < operation.maxRetries) {
                 operation.retries++;
                 operation.priority = Math.max(0, operation.priority - 1); // Lower priority on retry
@@ -168,11 +166,11 @@ export class SyncService {
                 if (progress) {
                     const newFailed = progress.failed + 1;
                     const newInProgress = this.activeOperations.size;
-                    
-                    const isComplete = progress.completed + newFailed >= progress.total && 
-                                     newInProgress === 0 && 
-                                     this.operationQueue.length === 0;
-                    
+
+                    const isComplete = progress.completed + newFailed >= progress.total &&
+                        newInProgress === 0 &&
+                        this.operationQueue.length === 0;
+
                     this.updateProgress(operation.vaultId, {
                         failed: newFailed,
                         inProgress: newInProgress,
@@ -185,7 +183,7 @@ export class SyncService {
         setTimeout(() => this.processQueue(), 10);
     }
 
-    private static queueOperation(
+    private queueOperation(
         type: 'upload' | 'download',
         vaultId: string,
         vaultPath: string,
@@ -204,13 +202,13 @@ export class SyncService {
         };
 
         this.operationQueue.push(operation);
-        
+
         this.processQueue();
-        
+
         return operation.id;
     }
 
-    static async getLocalFiles(vaultPath: string, fileTree: FileNode[]): Promise<LocalFileInfo[]> {
+    async getLocalFiles(vaultPath: string, fileTree: FileNode[]): Promise<LocalFileInfo[]> {
         const localFiles: LocalFileInfo[] = [];
         const metadata = await this.readSyncMetadata(vaultPath);
 
@@ -244,7 +242,7 @@ export class SyncService {
         return localFiles;
     }
 
-    static async checkSync(vaultId: string, vaultPath: string, fileTree: FileNode[]): Promise<{
+    async checkSync(vaultId: string, vaultPath: string, fileTree: FileNode[]): Promise<{
         actions: Array<{ path: string; action: SyncAction; serverVersion: number; fileId?: string }>;
         conflicts: SyncConflict[];
     }> {
@@ -257,7 +255,7 @@ export class SyncService {
                 contentHash: file.contentHash,
             }));
 
-            const response = await sync.checkSync(vaultId, { files: syncRequest });
+            const response = await this.sync.checkSync(vaultId, { files: syncRequest });
 
             const actions = response.actions.map((action) => {
                 const localFile = localFiles.find(f => f.relativePath === action.relativePath);
@@ -286,7 +284,7 @@ export class SyncService {
         }
     }
 
-    static async uploadFile(vaultId: string, vaultPath: string, localFile: LocalFileInfo): Promise<void> {
+    async uploadFile(vaultId: string, vaultPath: string, localFile: LocalFileInfo): Promise<void> {
         try {
             if (!CryptoService.getMasterKey()) {
                 throw new Error('Encryption not available. Please log in to upload files.');
@@ -306,7 +304,7 @@ export class SyncService {
                 contentHash: localFile.contentHash,
             };
 
-            const response = await sync.uploadFile(vaultId, uploadRequest, encryptedContent);
+            const response = await this.sync.uploadFile(vaultId, uploadRequest, encryptedContent);
 
             if (response.success) {
                 const updatedMetadata = await this.readSyncMetadata(vaultPath);
@@ -318,7 +316,7 @@ export class SyncService {
                 await this.writeSyncMetadata(vaultPath, updatedMetadata);
             } else {
                 if (response.conflict) {
-                    const resolvedResponse = await ConflictResolver.handleUploadConflict(
+                    const resolvedResponse = await this.conflictResolver.handleUploadConflict(
                         vaultId,
                         uploadRequest,
                         encryptedContent,
@@ -346,7 +344,7 @@ export class SyncService {
         }
     }
 
-    static async downloadFile(vaultId: string, vaultPath: string, fileId: string, relativePath: string, version?: number): Promise<void> {
+    async downloadFile(vaultId: string, vaultPath: string, fileId: string, relativePath: string, version?: number): Promise<void> {
         try {
             const fullPath = `${vaultPath}/${relativePath}`;
             const metadata = await this.readSyncMetadata(vaultPath);
@@ -372,7 +370,7 @@ export class SyncService {
             }
 
             if (hasLocalConflict) {
-                const resolution = await ConflictResolver.handleDownloadConflict(
+                const resolution = await this.conflictResolver.handleDownloadConflict(
                     vaultId,
                     fileId,
                     relativePath,
@@ -405,7 +403,7 @@ export class SyncService {
                     };
 
                     try {
-                        const uploadResponse = await sync.forceUploadFile(vaultId, uploadRequest, resolution.encryptedContent);
+                        const uploadResponse = await this.sync.forceUploadFile(vaultId, uploadRequest, resolution.encryptedContent);
                         if (uploadResponse.success) {
                             metadata[relativePath].version = uploadResponse.version;
                             await this.writeSyncMetadata(vaultPath, metadata);
@@ -418,7 +416,7 @@ export class SyncService {
                 return;
             }
 
-            const fileVersion = await sync.downloadFile(vaultId, fileId, version);
+            const fileVersion = await this.sync.downloadFile(vaultId, fileId, version);
 
             if (!CryptoService.getMasterKey()) {
                 throw new Error('Encryption not available. Please log in to download files.');
@@ -446,7 +444,7 @@ export class SyncService {
         }
     }
 
-    static async performBackgroundSync(
+    async performBackgroundSync(
         vaultId: string,
         vaultPath: string,
         fileTree: FileNode[],
@@ -454,7 +452,7 @@ export class SyncService {
     ): Promise<void> {
         try {
             this.operationQueue = this.operationQueue.filter(op => op.vaultId !== vaultId);
-            
+
             const { actions } = await this.checkSync(vaultId, vaultPath, fileTree);
             const localFiles = await this.getLocalFiles(vaultPath, fileTree);
 
@@ -505,26 +503,26 @@ export class SyncService {
         }
     }
 
-    static getSyncProgress(vaultId: string): SyncProgress | null {
+    getSyncProgress(vaultId: string): SyncProgress | null {
         return this.syncProgress.get(vaultId) || null;
     }
 
-    static onSyncProgress(vaultId: string, callback: (progress: SyncProgress) => void): void {
+    onSyncProgress(vaultId: string, callback: (progress: SyncProgress) => void): void {
         this.progressCallbacks.set(vaultId, callback);
     }
 
-    static offSyncProgress(vaultId: string): void {
+    offSyncProgress(vaultId: string): void {
         this.progressCallbacks.delete(vaultId);
     }
 
-    static getQueueStatus(): { pending: number; active: number } {
+    getQueueStatus(): { pending: number; active: number } {
         return {
             pending: this.operationQueue.length,
             active: this.activeOperations.size
         };
     }
 
-    static clearSyncProgress(vaultId: string): void {
+    clearSyncProgress(vaultId: string): void {
         this.syncProgress.delete(vaultId);
         this.progressCallbacks.delete(vaultId);
         this.operationQueue = this.operationQueue.filter(op => op.vaultId !== vaultId);

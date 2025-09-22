@@ -1,5 +1,5 @@
-import { SyncAPI, UploadFileRequest, UploadResponse, VersionConflictInfo, ConflictResolutionChoice, FileVersionDto } from '../../packages/core/api/syncAPI';
-import { CryptoService } from './cryptoService';
+import { SyncAPI, UploadFileRequest, UploadResponse, VersionConflictInfo, ConflictResolutionChoice, FileVersionDto } from '../api/syncAPI';
+import { CryptoService } from '../../../src/services/cryptoService';
 
 export interface ConflictInfo {
     relativePath: string;
@@ -11,15 +11,23 @@ export interface ConflictInfo {
     conflictType: 'upload' | 'download';
 }
 
+export interface ConflictDialog {
+    presentConflictDialog(
+        conflictInfo: ConflictInfo,
+        serverContent: string
+    ): Promise<ConflictResolutionChoice>;
+}
+
 export class ConflictResolver {
-    static async handleUploadConflict(
+    constructor(private sync: SyncAPI, private dialog: ConflictDialog) {}
+    async handleUploadConflict(
         vaultId: string,
         uploadRequest: UploadFileRequest,
         encryptedContent: string,
         conflict: VersionConflictInfo
     ): Promise<UploadResponse> {
         try {
-            const serverFile = await SyncAPI.downloadFileByPath(
+            const serverFile = await this.sync.downloadFileByPath(
                 vaultId,
                 uploadRequest.relativePath,
                 conflict.currentServerVersion
@@ -47,7 +55,7 @@ export class ConflictResolver {
         }
     }
 
-    static async handleDownloadConflict(
+    async handleDownloadConflict(
         vaultId: string,
         fileId: string,
         relativePath: string,
@@ -56,7 +64,7 @@ export class ConflictResolver {
         localVersion: number
     ): Promise<{ content: string; encryptedContent: string; shouldUpload: boolean; uploadRequest?: UploadFileRequest }> {
         try {
-            const serverFile = await SyncAPI.downloadFile(vaultId, fileId, serverVersion);
+            const serverFile = await this.sync.downloadFile(vaultId, fileId, serverVersion);
             const serverContent = await this.decryptContent(serverFile.encryptedContent, serverFile.encryptedFileKey);
 
             const conflictInfo: ConflictInfo = {
@@ -83,7 +91,7 @@ export class ConflictResolver {
         }
     }
 
-    private static async executeDownloadResolution(
+    private async executeDownloadResolution(
         choice: ConflictResolutionChoice,
         localContent: string,
         serverContent: string,
@@ -144,7 +152,7 @@ export class ConflictResolver {
         }
     }
 
-    private static async executeResolution(
+    private async executeResolution(
         vaultId: string,
         uploadRequest: UploadFileRequest,
         encryptedContent: string,
@@ -153,7 +161,7 @@ export class ConflictResolver {
     ): Promise<UploadResponse> {
         switch (choice.type) {
             case 'keep-local':
-                return await SyncAPI.forceUploadFile(vaultId, {
+                return await this.sync.forceUploadFile(vaultId, {
                     ...uploadRequest,
                     version: conflict.currentServerVersion + 1
                 }, encryptedContent);
@@ -175,7 +183,7 @@ export class ConflictResolver {
                 const { encryptedContent, encryptedFileKey } = await this.encryptContent(choice.mergedContent);
                 const mergedHash = CryptoService.generateContentHash(choice.mergedContent);
 
-                return await SyncAPI.forceUploadFile(vaultId, {
+                return await this.sync.forceUploadFile(vaultId, {
                     ...uploadRequest,
                     sizeBytes: new TextEncoder().encode(encryptedContent).length, // TODO: Ensure sizeBytes is correct
                     encryptedFileKey,
@@ -189,25 +197,14 @@ export class ConflictResolver {
         }
     }
 
-    private static async presentConflictDialog(
+    private async presentConflictDialog(
         conflictInfo: ConflictInfo,
         serverContent: string
     ): Promise<ConflictResolutionChoice> {
-        return new Promise((resolve, reject) => {
-            const event = new CustomEvent('showConflictDialog', {
-                detail: {
-                    conflictInfo,
-                    serverContent,
-                    resolve,
-                    reject
-                }
-            });
-
-            window.dispatchEvent(event);
-        });
+        return this.dialog.presentConflictDialog(conflictInfo, serverContent);
     }
 
-    static async attemptAutoMerge(
+    async attemptAutoMerge(
         localContent: string,
         serverContent: string
     ): Promise<string | null> {
@@ -220,12 +217,12 @@ export class ConflictResolver {
     }
 
     // TODO: remove, any plain text format should be mergeable
-    static canAutoMerge(filePath: string): boolean {
+    canAutoMerge(filePath: string): boolean {
         const textExtensions = ['.md', '.txt', '.js', '.ts', '.css', '.html', '.json', '.xml', '.yml', '.yaml'];
         return textExtensions.some(ext => filePath.toLowerCase().endsWith(ext));
     }
 
-    private static async decryptContent(encryptedContent: string, encryptedFileKey: string): Promise<string> {
+    private async decryptContent(encryptedContent: string, encryptedFileKey: string): Promise<string> {
         try {
             return CryptoService.prepareDownloadedFile(encryptedContent, encryptedFileKey);
         } catch (error) {
@@ -233,7 +230,7 @@ export class ConflictResolver {
         }
     }
 
-    private static async encryptContent(content: string): Promise<{ encryptedContent: string; encryptedFileKey: string }> {
+    private async encryptContent(content: string): Promise<{ encryptedContent: string; encryptedFileKey: string }> {
         try {
             return CryptoService.prepareFileForUpload(content);
         } catch (error) {
