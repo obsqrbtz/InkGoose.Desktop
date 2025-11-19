@@ -109,14 +109,6 @@ const SearchPanel: React.FC = () => {
         {!searchQuery.trim() && (
           <div className="search-help">
             <p>Enter a search term to find notes</p>
-            <div className="search-tips">
-              <h4>Search Tips:</h4>
-              <ul>
-                <li>Use quotes for exact phrases</li>
-                <li>Search supports #tags</li>
-                <li>Use [[links]] to find linked notes</li>
-              </ul>
-            </div>
           </div>
         )}
       </div>

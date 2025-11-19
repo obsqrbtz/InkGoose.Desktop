@@ -187,7 +187,7 @@ export const App: React.FC = () => {
             <div className="welcome-screen">
               <div className="welcome-content">
                 <h2>Welcome to Ink Goose</h2>
-                <p>A modern Markdown note-taking app</p>
+                <p>A Markdown note-taking app</p>
                 <button
                   className="open-vault-btn-large"
                   onClick={handleOpenVault}

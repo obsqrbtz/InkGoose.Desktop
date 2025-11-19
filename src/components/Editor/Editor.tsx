@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { EditorView, basicSetup } from 'codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorState, Transaction } from '@codemirror/state';
-import { marked } from 'marked';
+import { marked, Tokens } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 // eslint-disable-next-line import/no-unresolved
 import hljs from 'highlight.js/lib/common';
@@ -48,10 +48,222 @@ marked.use(
     }
   })
 );
+
+const renderer = new marked.Renderer();
+
+renderer.image = function ({ href, title, text }: Tokens.Image): string {
+  const src = href.startsWith('http') ? href : `file://${href}`;
+
+  return `
+    <img src="${src}" 
+         alt="${text || ''}" 
+         ${title ? `title="${title}"` : ''}
+         class="markdown-image"
+         loading="lazy"
+         data-preview-src="${src.replace(/"/g, '&quot;')}">
+  `;
+};
+
 marked.setOptions({
   breaks: true,
   gfm: true,
+  renderer: renderer
 });
+
+let isDragging = false;
+let startX = 0, startY = 0, translateX = 0, translateY = 0;
+
+function createImagePreviewOverlay(): void {
+  const overlay = document.createElement('div');
+  overlay.id = 'image-preview-overlay';
+  overlay.innerHTML = `
+    <div class="preview-container">
+      <img id="preview-image" src="" alt="Preview" draggable="false">
+      <button class="close-btn" id="close-preview-btn">&times;</button>
+      <div class="zoom-controls">
+        <button id="zoom-in-btn">+</button>
+        <button id="zoom-out-btn">-</button>
+        <button id="reset-zoom-btn">↺</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+
+  const closeBtn = document.getElementById('close-preview-btn');
+  const zoomInBtn = document.getElementById('zoom-in-btn');
+  const zoomOutBtn = document.getElementById('zoom-out-btn');
+  const resetBtn = document.getElementById('reset-zoom-btn');
+
+  if (closeBtn) closeBtn.addEventListener('click', closeImagePreview);
+  if (zoomInBtn) zoomInBtn.addEventListener('click', () => zoomImage(1.2));
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => zoomImage(0.8));
+  if (resetBtn) resetBtn.addEventListener('click', resetZoom);
+
+  overlay.addEventListener('click', (e: MouseEvent) => {
+    if (e.target === overlay) {
+      closeImagePreview();
+    }
+  });
+
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      closeImagePreview();
+    }
+  });
+
+  if (previewImg) {
+    previewImg.addEventListener('dragstart', (e: DragEvent) => {
+      e.preventDefault();
+    });
+
+    previewImg.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      zoomImage(delta);
+    });
+
+    previewImg.addEventListener('mousedown', (e: MouseEvent) => {
+      if (currentZoom > 1) {
+        e.preventDefault(); // Prevent default drag
+        isDragging = true;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        previewImg.style.cursor = 'grabbing';
+      }
+    });
+  }
+}
+
+function constrainTranslation(tx: number, ty: number): { x: number; y: number } {
+  const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+  if (!previewImg) return { x: tx, y: ty };
+
+  const container = previewImg.parentElement;
+  if (!container) return { x: tx, y: ty };
+
+  const imgWidth = previewImg.naturalWidth || previewImg.width;
+  const imgHeight = previewImg.naturalHeight || previewImg.height;
+
+  const scaledWidth = imgWidth * currentZoom;
+  const scaledHeight = imgHeight * currentZoom;
+
+  const containerWidth = container.clientWidth;
+  const containerHeight = container.clientHeight;
+
+  const maxTranslateX = (scaledWidth - containerWidth) / 2 / currentZoom;
+  const maxTranslateY = (scaledHeight - containerHeight) / 2 / currentZoom;
+
+  if (scaledWidth > containerWidth) {
+    tx = Math.max(-maxTranslateX, Math.min(maxTranslateX, tx));
+  } else {
+    tx = 0;
+  }
+
+  if (scaledHeight > containerHeight) {
+    ty = Math.max(-maxTranslateY, Math.min(maxTranslateY, ty));
+  } else {
+    ty = 0;
+  }
+
+  return { x: tx, y: ty };
+}
+
+document.addEventListener('mousemove', (e: MouseEvent) => {
+  if (isDragging) {
+    e.preventDefault();
+    const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+    if (previewImg) {
+      let newTranslateX = (e.clientX - startX) / currentZoom;
+      let newTranslateY = (e.clientY - startY) / currentZoom;
+
+      const constrained = constrainTranslation(newTranslateX, newTranslateY);
+      translateX = constrained.x * currentZoom;
+      translateY = constrained.y * currentZoom;
+
+      previewImg.style.transform = `scale(${currentZoom}) translate(${constrained.x}px, ${constrained.y}px)`;
+    }
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (isDragging) {
+    isDragging = false;
+    startX = 0;
+    startY = 0;
+    translateX = 0;
+    translateY = 0;
+    const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+    if (previewImg && currentZoom > 1) {
+      previewImg.style.cursor = 'grab';
+    }
+  }
+});
+
+let currentZoom = 1;
+
+function openImagePreview(src: string): void {
+  let overlay = document.getElementById('image-preview-overlay');
+  if (!overlay) {
+    createImagePreviewOverlay();
+    overlay = document.getElementById('image-preview-overlay');
+  }
+
+  if (!overlay) return;
+
+  const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+  if (!previewImg) return;
+
+  previewImg.src = src;
+  currentZoom = 1;
+  previewImg.style.transform = 'scale(1)';
+  overlay.classList.add('active');
+}
+
+function closeImagePreview(): void {
+  const overlay = document.getElementById('image-preview-overlay');
+  if (overlay) {
+    overlay.classList.remove('active');
+  }
+}
+
+function zoomImage(factor: number): void {
+  currentZoom *= factor;
+  currentZoom = Math.max(0.5, Math.min(currentZoom, 5));
+  const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+  if (previewImg) {
+    translateX = 0;
+    translateY = 0;
+    previewImg.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+    previewImg.style.cursor = currentZoom > 1 ? 'grab' : 'normal';
+  }
+}
+
+function resetZoom(): void {
+  currentZoom = 1;
+  translateX = 0;
+  translateY = 0;
+  const previewImg = document.getElementById('preview-image') as HTMLImageElement;
+  if (previewImg) {
+    previewImg.style.transform = 'scale(1) translate(0px, 0px)';
+    previewImg.style.cursor = 'normal';
+  }
+}
+
+function setupImagePreview(): void {
+  document.addEventListener('click', (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'IMG' && target.classList.contains('markdown-image')) {
+      const src = target.getAttribute('data-preview-src');
+      if (src) {
+        openImagePreview(src);
+      }
+    }
+  });
+}
+
+setupImagePreview();
 
 const LARGE_FILE_THRESHOLD = 100000; // 100KB
 const CHUNK_SIZE = 50000; // 50KB

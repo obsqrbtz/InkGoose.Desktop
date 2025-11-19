@@ -116,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({ vault, files, onOpenVault }) => {
                     <button
                       onClick={onOpenVault}
                       className="change-vault-btn"
-                      title="Change Vault"
+                      title="Open Vault"
                     >
                       <FolderOpenIcon />
                     </button>
