@@ -487,7 +487,6 @@ const Editor: React.FC = () => {
           <div className="placeholder-tips">
             <h3>Quick Tips:</h3>
             <ul>
-              <li>Use <code>[[Link Name]]</code> to create wiki-style links</li>
               <li>Add <code>#tags</code> to organize your notes</li>
               <li>Use <code>Ctrl/Cmd + S</code> to save</li>
               <li>Cycle editor modes with <code>Ctrl/Cmd + P</code></li>

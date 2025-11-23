@@ -78,7 +78,10 @@ export class SyncService {
         return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     }
 
-    private updateProgress(vaultId: string, update: Partial<SyncProgress>): void {
+    private updateProgress(
+        vaultId: string,
+        update: Partial<SyncProgress> | ((current: SyncProgress) => Partial<SyncProgress>)
+    ): void {
         const current = this.syncProgress.get(vaultId) || {
             total: 0,
             completed: 0,
@@ -87,13 +90,14 @@ export class SyncService {
             status: 'idle'
         };
 
-        const updated = { ...current, ...update };
+        const updated = typeof update === 'function'
+            ? { ...current, ...update(current) }
+            : { ...current, ...update };
+
         this.syncProgress.set(vaultId, updated);
 
         const callback = this.progressCallbacks.get(vaultId);
-        if (callback) {
-            callback(updated);
-        }
+        if (callback) callback(updated);
     }
 
     private async processQueue(): Promise<void> {
@@ -101,28 +105,29 @@ export class SyncService {
         this.isProcessingQueue = true;
 
         try {
-            while (this.operationQueue.length > 0 && this.activeOperations.size < this.MAX_CONCURRENT_OPERATIONS) {
-                this.operationQueue.sort((a, b) => b.priority - a.priority);
+            const runNext = async () => {
+                while (this.operationQueue.length > 0 && this.activeOperations.size < this.MAX_CONCURRENT_OPERATIONS) {
+                    this.operationQueue.sort((a, b) => b.priority - a.priority);
+                    const operation = this.operationQueue.shift();
+                    if (!operation) break;
 
-                const operation = this.operationQueue.shift();
-                if (!operation) break;
+                    this.activeOperations.add(operation.id);
+                    this.updateProgress(operation.vaultId, { inProgress: this.activeOperations.size });
 
-                this.activeOperations.add(operation.id);
-                this.updateProgress(operation.vaultId, { inProgress: this.activeOperations.size });
+                    this.processOperation(operation)
+                        .finally(() => {
+                            this.activeOperations.delete(operation.id);
+                            this.updateProgress(operation.vaultId, { inProgress: this.activeOperations.size });
+                            runNext().catch(console.error);
+                        });
+                }
+            };
 
-                this.processOperation(operation).catch(error => {
-                    console.error(`Operation ${operation.id} failed:`, error);
-                });
-            }
+            await runNext();
         } finally {
             this.isProcessingQueue = false;
         }
-
-        if (this.operationQueue.length > 0) {
-            setTimeout(() => this.processQueue(), 100);
-        }
     }
-
     private async processOperation(operation: QueuedOperation): Promise<void> {
         try {
             if (operation.type === 'upload') {
@@ -137,75 +142,81 @@ export class SyncService {
                 );
             }
 
-            this.activeOperations.delete(operation.id);
-            const progress = this.syncProgress.get(operation.vaultId);
-            if (progress) {
-                const newCompleted = progress.completed + 1;
-                const newInProgress = this.activeOperations.size;
+            this.updateProgress(operation.vaultId, progress => ({
+                completed: progress.completed + 1
+            }));
 
-                const isComplete = newCompleted + progress.failed >= progress.total &&
-                    newInProgress === 0 &&
-                    this.operationQueue.length === 0;
-
-                this.updateProgress(operation.vaultId, {
-                    completed: newCompleted,
-                    inProgress: newInProgress,
-                    status: isComplete ? 'completed' : progress.status
-                });
-            }
+            (operation as any).resolve?.();
         } catch (error) {
-            console.error(`Operation ${operation.id} failed:`, error);
-
             if (operation.retries < operation.maxRetries) {
                 operation.retries++;
-                operation.priority = Math.max(0, operation.priority - 1); // Lower priority on retry
+                operation.priority = Math.max(0, operation.priority - 1); // Decrease priority on retry
                 this.operationQueue.push(operation);
             } else {
-                this.activeOperations.delete(operation.id);
-                const progress = this.syncProgress.get(operation.vaultId);
-                if (progress) {
-                    const newFailed = progress.failed + 1;
-                    const newInProgress = this.activeOperations.size;
-
-                    const isComplete = progress.completed + newFailed >= progress.total &&
-                        newInProgress === 0 &&
-                        this.operationQueue.length === 0;
-
-                    this.updateProgress(operation.vaultId, {
-                        failed: newFailed,
-                        inProgress: newInProgress,
-                        status: isComplete ? 'completed' : progress.status
-                    });
-                }
+                this.updateProgress(operation.vaultId, progress => ({
+                    failed: progress.failed + 1
+                }));
+                (operation as any).reject?.(error);
             }
         }
-
-        setTimeout(() => this.processQueue(), 10);
     }
 
-    private queueOperation(
-        type: 'upload' | 'download',
+    private updateOperationProgress(vaultId: string, completedIncrement: number, failedIncrement: number) {
+        const progress = this.syncProgress.get(vaultId);
+        if (!progress) return;
+
+        const updated = {
+            ...progress,
+            completed: progress.completed + completedIncrement,
+            failed: progress.failed + failedIncrement,
+            inProgress: this.activeOperations.size
+        };
+
+        this.syncProgress.set(vaultId, updated);
+
+        const callback = this.progressCallbacks.get(vaultId);
+        if (callback) callback(updated);
+    }
+
+    private checkIfVaultCompleted(vaultId: string) {
+        const progress = this.syncProgress.get(vaultId);
+        if (!progress) return;
+
+        const pending = this.operationQueue.filter(op => op.vaultId === vaultId).length;
+        const active = Array.from(this.activeOperations).filter(id =>
+            !this.operationQueue.find(op => op.id === id)
+        ).length;
+
+        if (pending === 0 && active === 0) {
+            this.updateProgress(vaultId, { status: 'completed', inProgress: 0 });
+        }
+    }
+
+    private queueOperation<T extends 'upload' | 'download'>(
+        type: T,
         vaultId: string,
         vaultPath: string,
         data: unknown,
         priority = 1
-    ): string {
-        const operation: QueuedOperation = {
-            id: this.generateOperationId(),
-            type,
-            priority,
-            vaultId,
-            vaultPath,
-            data,
-            retries: 0,
-            maxRetries: this.MAX_RETRIES
-        };
+    ): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const operation: QueuedOperation = {
+                id: this.generateOperationId(),
+                type,
+                priority,
+                vaultId,
+                vaultPath,
+                data,
+                retries: 0,
+                maxRetries: this.MAX_RETRIES,
+            };
 
-        this.operationQueue.push(operation);
+            (operation as any).resolve = resolve;
+            (operation as any).reject = reject;
 
-        this.processQueue();
-
-        return operation.id;
+            this.operationQueue.push(operation);
+            this.processQueue().catch(console.error);
+        });
     }
 
     async getLocalFiles(vaultPath: string, fileTree: FileNode[]): Promise<LocalFileInfo[]> {
@@ -450,57 +461,58 @@ export class SyncService {
         fileTree: FileNode[],
         onProgress?: (progress: SyncProgress) => void
     ): Promise<void> {
-        try {
-            this.operationQueue = this.operationQueue.filter(op => op.vaultId !== vaultId);
+        this.operationQueue = this.operationQueue.filter(op => op.vaultId !== vaultId);
 
-            const { actions } = await this.checkSync(vaultId, vaultPath, fileTree);
-            const localFiles = await this.getLocalFiles(vaultPath, fileTree);
+        if (onProgress) {
+            this.progressCallbacks.set(vaultId, onProgress);
+        }
 
-            this.syncProgress.set(vaultId, {
-                total: actions.length,
-                completed: 0,
-                failed: 0,
-                inProgress: 0,
-                status: actions.length > 0 ? 'syncing' : 'completed'
-            });
+        const { actions } = await this.checkSync(vaultId, vaultPath, fileTree);
+        const localFiles = await this.getLocalFiles(vaultPath, fileTree);
 
-            if (onProgress) {
-                this.progressCallbacks.set(vaultId, onProgress);
-            }
+        this.syncProgress.set(vaultId, {
+            total: actions.length,
+            completed: 0,
+            failed: 0,
+            inProgress: 0,
+            status: actions.length > 0 ? 'syncing' : 'completed'
+        });
 
-            if (actions.length === 0) {
-                this.updateProgress(vaultId, { status: 'completed' });
-                return;
-            }
+        if (actions.length === 0) {
+            return;
+        }
 
-            for (const action of actions) {
-                const localFile = localFiles.find(f => f.path === action.path);
+        const promises: Promise<void>[] = [];
 
-                switch (action.action) {
-                    case SyncAction.Upload:
-                        if (localFile) {
-                            this.queueOperation('upload', vaultId, vaultPath, localFile, 2);
-                        }
-                        break;
-                    case SyncAction.Download:
-                        if (action.fileId) {
-                            const relativePath = localFile ? this.getRelativePath(action.path, vaultPath) : action.path;
+        for (const action of actions) {
+            const localFile = localFiles.find(f => f.path === action.path);
+
+            switch (action.action) {
+                case SyncAction.Upload:
+                    if (localFile) {
+                        promises.push(this.queueOperation('upload', vaultId, vaultPath, localFile, 2));
+                    }
+                    break;
+                case SyncAction.Download:
+                    if (action.fileId) {
+                        const relativePath = localFile
+                            ? this.getRelativePath(action.path, vaultPath)
+                            : action.path;
+                        promises.push(
                             this.queueOperation('download', vaultId, vaultPath, {
                                 fileId: action.fileId,
                                 relativePath,
                                 version: action.serverVersion
-                            }, 1);
-                        }
-                        break;
-                }
+                            }, 1)
+                        );
+                    }
+                    break;
             }
-
-            this.updateProgress(vaultId, { status: 'processing' });
-        } catch (error) {
-            console.error('Background sync failed:', error);
-            this.updateProgress(vaultId, { status: 'error' });
-            throw error;
         }
+
+        await Promise.allSettled(promises);
+
+        this.updateProgress(vaultId, { status: 'completed', inProgress: 0 });
     }
 
     getSyncProgress(vaultId: string): SyncProgress | null {

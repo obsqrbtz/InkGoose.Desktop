@@ -68,7 +68,7 @@ const parseJWT = (token: string) => {
     }
 };
 
-const createAuthRequest = (endpoint: string, data: unknown, method = 'POST') => ({
+const createAuthRequest = (data: unknown, method = 'POST') => ({
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -128,7 +128,7 @@ export class AuthAPI {
     static async login(credentials: LoginRequest): Promise<LoginResponse> {
         const response = await this.request<LoginResponse>(
             '/auth/login',
-            createAuthRequest('/auth/login', credentials),
+            createAuthRequest(credentials),
             false
         );
 
@@ -139,7 +139,7 @@ export class AuthAPI {
     static async register(data: RegisterRequest): Promise<RegisterResponse> {
         return this.request<RegisterResponse>(
             '/auth/register',
-            createAuthRequest('/auth/register', data),
+            createAuthRequest(data),
             false
         );
     }
@@ -148,7 +148,7 @@ export class AuthAPI {
         if (this.refreshToken) {
             try {
                 await this.request('/auth/logout',
-                    createAuthRequest('/auth/logout', { refreshToken: this.refreshToken })
+                    createAuthRequest({ refreshToken: this.refreshToken })
                 );
             } catch (error) {
                 console.warn('Logout request failed:', error);
@@ -162,7 +162,7 @@ export class AuthAPI {
 
         const response = await this.request<TokenResponse>(
             '/auth/refresh',
-            createAuthRequest('/auth/refresh', { refreshToken: this.refreshToken }),
+            createAuthRequest({ refreshToken: this.refreshToken }),
             false
         );
 

@@ -807,54 +807,64 @@ const createAppStore = (dependencies: AppStoreDependencies) => {
           return;
         }
 
-        try {
-          set({ isSyncing: true, syncProgress: { message: 'Starting background sync...', progress: 0 } });
+        set({
+          isSyncing: true,
+          syncProgress: { message: 'Starting background sync...', progress: 0 }
+        });
 
-          await syncService.performBackgroundSync(
-            state.currentVaultId,
-            state.vault,
-            state.files,
-            (progress) => {
-              const percent = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
+        let finished = false;
 
-              const isComplete = progress.status === 'completed' ||
-                (progress.completed + progress.failed >= progress.total && progress.inProgress === 0);
+        return new Promise<void>((resolve, reject) => {
+          if (state.currentVaultId === null || state.vault === null)
+            return;
+          try {
+            syncService.performBackgroundSync(
+              state.currentVaultId,
+              state.vault,
+              state.files,
+              (progress) => {
+                const percent = progress.total > 0
+                  ? ((progress.completed + progress.failed) / progress.total) * 100
+                  : 0;
 
-              if (isComplete) {
-                set({
-                  isSyncing: false,
-                  lastSyncTime: new Date(),
-                  syncProgress: null,
-                });
-
-                state.refreshFiles().then(() => {
-                  const updatedState = get();
-                  state.rebuildTagsIndex(updatedState.files);
-                  state.buildSearchIndex();
-                });
-              } else {
                 set({
                   syncProgress: {
                     message: `${progress.status} (${progress.completed}/${progress.total})${progress.failed > 0 ? ` - ${progress.failed} failed` : ''}`,
                     progress: percent
                   }
                 });
+
+                if (!finished && progress.status === 'completed') {
+                  finished = true;
+
+                  set({
+                    isSyncing: false,
+                    lastSyncTime: new Date(),
+                    syncProgress: null
+                  });
+
+                  state.refreshFiles().then(() => {
+                    const updatedState = get();
+                    state.rebuildTagsIndex(updatedState.files);
+                    state.buildSearchIndex();
+                    resolve();
+                  }).catch((err) => {
+                    console.error('Failed to refresh files after sync:', err);
+                    reject(err);
+                  });
+                }
               }
-            }
-          );
-
-          // Return immediately - sync continues in background
-          set({
-            isSyncing: false, // Allow app to continue
-            syncProgress: { message: 'Sync running in background...', progress: 0 },
-            lastSyncTime: new Date()
-          });
-
-        } catch (error) {
-          console.error('Sync failed:', error);
-          set({ isSyncing: false, syncProgress: null });
-          throw error;
-        }
+            ).catch(err => {
+              console.error('Background sync failed:', err);
+              set({ isSyncing: false });
+              reject(err);
+            });
+          } catch (error) {
+            console.error('SyncVault error:', error);
+            set({ isSyncing: false });
+            reject(error);
+          }
+        });
       },
 
       addCurrentFolderToAccount: async (currentFolderPath: string, vaultName: string) => {
