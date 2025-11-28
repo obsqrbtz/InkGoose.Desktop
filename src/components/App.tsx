@@ -33,6 +33,8 @@ export const App: React.FC = () => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [vaultSelectorOpen, setVaultSelectorOpen] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
 
   useVaultWatcher();
   usePeriodicSync();
@@ -79,6 +81,29 @@ export const App: React.FC = () => {
       dark.media = !isDark ? 'not all' : 'all';
     }
   }, [theme]);
+
+  const startResize = () => {
+    setIsResizing(true);
+  };
+
+  React.useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(500, Math.max(150, e.clientX)); // clamp
+      setSidebarWidth(newWidth);
+    };
+
+    const stopResize = () => setIsResizing(false);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', stopResize);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', stopResize);
+    };
+  }, [isResizing]);
 
   const handleOpenVault = async () => {
     try {
@@ -174,11 +199,24 @@ export const App: React.FC = () => {
 
       <div className="app-body">
         {sidebarOpen && (
-          <Sidebar
-            vault={vault}
-            files={files}
-            onOpenVault={handleOpenVault}
-          />
+          <>
+            <div
+              className="sidebar-container"
+              style={{ width: sidebarWidth }}
+            >
+              <Sidebar
+                vault={vault}
+                files={files}
+                onOpenVault={handleOpenVault}
+              />
+            </div>
+
+            {/* Resize handle */}
+            <div
+              className="sidebar-resizer"
+              onMouseDown={startResize}
+            />
+          </>
         )}
         <div className="main-content">
           {vault ? (
