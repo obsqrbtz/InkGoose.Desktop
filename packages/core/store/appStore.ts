@@ -177,7 +177,9 @@ const createHelpers = (getState: () => AppState, dependencies: AppStoreDependenc
 
   const initializeAfterAuth = async () => {
     const state = getState();
-    await state.initializeUserVaults();
+    state.initializeUserVaults().catch((error) => {
+      console.error('Failed to initialize user vaults:', error);
+    });
   };
 
   const ensureUserDirectories = async (username: string) => {
@@ -554,7 +556,9 @@ const createAppStore = (dependencies: AppStoreDependencies) => {
             const storedMasterKey = await cryptoService.retrieveMasterKeySecurely(user.id.toString());
             if (storedMasterKey) {
               cryptoService.setMasterKey(storedMasterKey);
-              await get().initializeUserVaults();
+              get().initializeUserVaults().catch((error) => {
+                console.error('Failed to initialize user vaults in background:', error);
+              });
             } else {
               console.log('No stored master key found');
               await ensureUserDirectories(user.username);
