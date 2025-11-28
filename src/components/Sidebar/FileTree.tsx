@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { FileNode } from '../../../packages/core/types';
 import { useAppStore } from '../../store';
-import { extractTags } from '../../../packages/core/utils/tags';
 import FolderIcon from '../icons/FolderIcon';
 import FolderOpenIcon from '../icons/FolderOpenIcon';
 import FileIcon from '../icons/FileIcon';
@@ -12,8 +11,7 @@ import PlusIcon from '../icons/PlusIcon';
 import ContextMenu, { ContextMenuItem } from '../ContextMenu/ContextMenu';
 import InputModal from '../InputModal/InputModal';
 import ConfirmModal from '../ConfirmModal/ConfirmModal';
-import { ElectronFileSystem } from '../../adapters/electronfileSystem';
-import { parseMarkdownFile, extractLinks } from '../../../packages/core/utils/markdown';
+import { openNote } from '../../utils/openNote';
 
 interface FileTreeProps {
   files: FileNode[];
@@ -113,6 +111,8 @@ const FileTree: React.FC<FileTreeProps> = ({ files }) => {
         try {
           await createNote(targetDir, noteName);
           setInputModal(prev => ({ ...prev, isOpen: false }));
+          const newPath = `${targetDir}/${noteName}.md`;
+          await openNote(newPath);
         } catch (error) {
           alert('Failed to create note: ' + (error as Error).message);
         }
@@ -284,35 +284,10 @@ const FileTree: React.FC<FileTreeProps> = ({ files }) => {
 const FileItem: React.FC<FileItemProps> = ({ file, level, onContextMenu }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const { setCurrentFile, addTab, updateNoteTags } = useAppStore();
-  const fileSystem = new ElectronFileSystem();
 
   const handleFileClick = async () => {
     if (file.type === 'file' && file.extension === '.md') {
-      try {
-        const content = await fileSystem.readFile(file.path);
-        const { frontMatter, body } = parseMarkdownFile(content);
-        const links = extractLinks(body);
-        const tags = extractTags(content);
-
-        const note = {
-          path: file.path,
-          name: file.name,
-          content: content,
-          frontMatter,
-          tags,
-          links,
-          backlinks: [],
-          lastModified: file.lastModified || new Date(),
-          created: file.lastModified || new Date(),
-        };
-
-        setCurrentFile(note);
-        updateNoteTags(note.path, note.name, content);
-        addTab(note);
-      } catch (error) {
-        console.error('Failed to open file:', error);
-      }
+      openNote(file.path);
     } else if (file.type === 'directory') {
       setIsExpanded(!isExpanded);
     }

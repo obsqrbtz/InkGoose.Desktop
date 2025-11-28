@@ -11,6 +11,7 @@ import PlusIcon from '../icons/PlusIcon';
 import TagExplorer from './TagExplorer';
 import FolderOpenIcon from '../icons/FolderOpenIcon';
 import InputModal from '../InputModal/InputModal';
+import { openNote } from '../../utils/openNote';
 
 interface SidebarProps {
   vault: string | null;
@@ -30,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ vault, files, onOpenVault }) => {
     try {
       await createNote(vault, noteName);
       setShowCreateNoteModal(false);
+      openNote(`${vault}/${noteName}.md`);
     } catch (error) {
       alert('Failed to create note: ' + (error as Error).message);
     }
