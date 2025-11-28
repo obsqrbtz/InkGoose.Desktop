@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import { EditorView, basicSetup } from 'codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorState, Transaction } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
+import { insertTab } from '@codemirror/commands';
 import { marked, Tokens } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 // eslint-disable-next-line import/no-unresolved
@@ -395,6 +397,9 @@ const Editor: React.FC = () => {
       const extensions = [
         basicSetup,
         markdown(),
+        keymap.of([
+          { key: 'Tab', run: insertTab }
+        ]),
         ...(theme === 'dark' ? inkGooseDark : inkGooseLight),
       ];
 
