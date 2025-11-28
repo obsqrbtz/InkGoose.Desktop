@@ -160,7 +160,8 @@ body {
   background: var(--accent-color);
   color: var(--text-accent);
   border: none;
-  padding: 6px 12px;
+  padding: 4px 12px;
+  height: 30px;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
@@ -174,9 +175,10 @@ body {
   -webkit-app-region: no-drag;
   background: var(--accent-primary);
   color: white;
+  height: 30px;
   border: none;
   border-radius: 6px;
-  padding: 8px 16px;
+  padding: 4px 16px;
   font-size: 0.9rem;
   cursor: pointer;
   margin-right: 12px;
